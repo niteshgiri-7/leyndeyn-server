@@ -22,5 +22,6 @@
     "noFallthroughCasesInSwitch": false,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
+    "types": ["jest"]
   }
 }

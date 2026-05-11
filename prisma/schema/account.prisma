@@ -1,0 +1,10 @@
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  provider          String  
+  providerAccountId String  
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
