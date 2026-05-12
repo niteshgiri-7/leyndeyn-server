@@ -1,6 +1,6 @@
 import { Body, ConflictException, Controller, NotFoundException, Post, UnauthorizedException } from '@nestjs/common';
 import { CreateUserDto, CustomLoginDto } from '../user/dto/user.dto';
-import { AuthService } from './auth.service';
+import { AuthService, JwtPayload } from './auth.service';
 import { UserRepository } from '../repository/user.repository';
 
 @Controller('auth')
@@ -22,9 +22,16 @@ export class AuthController {
         if(!isCredentialsValid) {
             throw new UnauthorizedException('Invalid credentials');
         }
+
+        const payload:JwtPayload = {
+            email:user.email,
+            isVerified:user.isVerified,
+            username:user.username,
+
+        }
        
-        const accessToken = await this.authService.generateJwtToken(user,{expiresIn:"1h"});
-        const refreshToken = await this.authService.generateJwtToken(user,{expiresIn:"7d"});
+        const accessToken = await this.authService.generateJwtToken(payload,{expiresIn:"1h"});
+        const refreshToken = await this.authService.generateJwtToken(payload,{expiresIn:"7d"});
 
         return {accessToken,refreshToken};
 

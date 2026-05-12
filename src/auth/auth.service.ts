@@ -3,15 +3,15 @@ import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { User } from '../../generated/prisma/client/client';
 
-export type JwtPayload = Pick<User, "email" | "username" | "displayName" | "isVerified">;
+export type JwtPayload = Pick<User, "email" | "username" | "isVerified">;
 
 @Injectable()
 export class AuthService {
 
     constructor(private readonly jwtService: JwtService) { }
 
-    async hashPassword(passsword: string) {
-        return await bcrypt.hash(passsword, 10);
+    async hashPassword(password: string) {
+        return await bcrypt.hash(password, 10);
     }
 
     async comparePassword(password: string, hashedPassword: string) {
