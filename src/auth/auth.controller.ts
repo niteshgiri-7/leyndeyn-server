@@ -33,7 +33,7 @@ export class AuthController {
         const accessToken = await this.authService.generateJwtToken(payload,{expiresIn:"1h"});
         const refreshToken = await this.authService.generateJwtToken(payload,{expiresIn:"7d"});
 
-        return {accessToken,refreshToken};
+        return { accessToken, refreshToken, message:`Welcome back ${user.username}!` };
 
     }
 
@@ -57,6 +57,6 @@ export class AuthController {
         const accessToken = await this.authService.generateJwtToken(newUser,{expiresIn:"1h"});
         const refreshToken = await this.authService.generateJwtToken(newUser,{expiresIn:"7d"});
 
-        return { accessToken, refreshToken };
+        return { accessToken, refreshToken, message:`Welcome abroad ${newUser.username}!` };
     }
 }
