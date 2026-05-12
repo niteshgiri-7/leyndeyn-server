@@ -1,0 +1,3 @@
+echo "\033[1;34m Wassup Captain? Please wait... lemme do a quick check 👑\033[0m"
+
+lint-staged
