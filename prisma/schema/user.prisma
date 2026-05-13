@@ -1,14 +1,13 @@
 model User {
-   id            String    @id @default(cuid())
-  email         String    @unique
-  username      String   @unique
-  avatarUrl     String?
-  passwordHash  String?   // Only for email/password users
-  isVerified    Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  accounts      Account[]
-  sentRequests     Friend[] @relation("FriendRequester")
-  receivedRequests Friend[] @relation("FriendReceiver")
+  id               String    @id @default(cuid())
+  email            String    @unique
+  username         String    @unique
+  avatarUrl        String?
+  passwordHash     String?
+  isVerified       Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  accounts         Account[]
+  receivedRequests Friend[]  @relation("FriendReceiver")
+  sentRequests     Friend[]  @relation("FriendRequester")
 }

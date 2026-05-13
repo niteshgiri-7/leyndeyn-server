@@ -172,6 +172,20 @@ export class FriendsService {
     );
   }
 
+  async cancelFriendRequest(requesterId: string, receiverId: string) {
+    await this.userRepository.validateUserExists(receiverId);
+
+    await this.prismaService.friend.delete({
+      where: {
+        requesterId_receiverId: {
+          requesterId,
+          receiverId,
+        },
+        status: "PENDING",
+      },
+    });
+  }
+
   //removes the current user from the records and returns just the friends
   extractFriendsFromRecord(records: FriendRecord[], currentUserId: string) {
     const friends = records.map((record) => {

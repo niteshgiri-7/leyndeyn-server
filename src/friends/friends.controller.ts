@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   DefaultValuePipe,
+  Delete,
   Get,
   Param,
   ParseEnumPipe,
@@ -33,6 +34,14 @@ export class FriendsController {
   ) {
     //requesterId is the current user and receiverId is the id from the parameter
     return await this.friendService.sendFriendRequest(user?.id, id);
+  }
+
+  @Delete("requests/:id")
+  async cancelFriendRequest(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+  ) {
+    return await this.friendService.rejectFriendRequest(user?.id, id);
   }
 
   @Get("requests/received")
