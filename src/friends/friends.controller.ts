@@ -35,6 +35,19 @@ export class FriendsController {
     return await this.friendService.sendFriendRequest(user?.id, id);
   }
 
+  @Get("requests/received")
+  async getFriendRequests(
+    @CurrentUser() user: JwtPayload,
+    @Query(
+      "status",
+      new DefaultValuePipe(Status.PENDING),
+      new ParseEnumPipe(Status),
+    )
+    status: Status,
+  ) {
+    return await this.friendService.getAllReceivedRequests(user.id, status);
+  }
+
   @Patch("requests/:id")
   async rejectFriendRequest(
     @CurrentUser() user: JwtPayload,
@@ -50,18 +63,5 @@ export class FriendsController {
     @Param("id") id: string,
   ) {
     return await this.friendService.acceptFriendRequest(user?.id, id);
-  }
-
-  @Get("requests/received")
-  async getFriendRequests(
-    @CurrentUser() user: JwtPayload,
-    @Query(
-      "status",
-      new DefaultValuePipe(Status.PENDING),
-      new ParseEnumPipe(Status),
-    )
-    status: Status,
-  ) {
-    return await this.friendService.getAllReceivedRequests(user.id, status);
   }
 }

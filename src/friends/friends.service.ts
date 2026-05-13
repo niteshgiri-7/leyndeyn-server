@@ -34,8 +34,7 @@ export class FriendsService {
         receiver: true,
       },
     });
-    if (!records || !records.length)
-      throw new NotFoundException("You don't have any friends yet.");
+    if (!records || !records.length) return [];
 
     const friends = this.extractFriendsFromRecord(records, userId);
 
@@ -43,6 +42,11 @@ export class FriendsService {
   }
 
   async sendFriendRequest(requesterId: string, receiverId: string) {
+    if (requesterId === receiverId)
+      throw new BadRequestException(
+        "You cannot send a friend request to yourself.",
+      );
+
     await this.userRepository.validateUserExists(receiverId);
 
     const receiver = await this.prismaService.user.findUnique({
@@ -62,6 +66,10 @@ export class FriendsService {
           {
             receiverId,
             requesterId,
+          },
+          {
+            receiverId: requesterId,
+            requesterId: receiverId,
           },
         ],
       },
@@ -96,11 +104,8 @@ export class FriendsService {
             receiverId: userId,
             requesterId: friendId,
           },
-          {
-            receiverId: friendId,
-            requesterId: userId,
-          },
         ],
+        status: "PENDING",
       },
     });
 
