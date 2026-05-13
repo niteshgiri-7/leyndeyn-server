@@ -1,62 +1,96 @@
-import { Body, ConflictException, Controller, NotFoundException, Post, UnauthorizedException } from '@nestjs/common';
-import { CreateUserDto, CustomLoginDto } from '../user/dto/user.dto';
-import { AuthService, JwtPayload } from './auth.service';
-import { UserRepository } from '../repository/user.repository';
+import {
+  Body,
+  ConflictException,
+  Controller,
+  NotFoundException,
+  Post,
+  UnauthorizedException,
+} from "@nestjs/common";
+import { CreateUserDto, CustomLoginDto } from "../user/dto/user.dto";
+import { AuthService } from "./auth.service";
+import { UserRepository } from "../repository/user.repository";
+import { JwtPayload } from "./jwt-payload.type";
 
-@Controller('auth')
+@Controller("auth")
 export class AuthController {
-  
-    constructor(private readonly userRepository:UserRepository,private readonly authService:AuthService){}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly authService: AuthService,
+  ) {}
 
-    @Post('login')
-    async login(@Body() loginDto:CustomLoginDto){
-        
-      const user = await this.userRepository.findByEmail(loginDto.email);
+  @Post("login")
+  async login(@Body() loginDto: CustomLoginDto) {
+    const user = await this.userRepository.findByEmail(loginDto.email);
 
-        if(!user || !user.passwordHash || !user.email)
-            throw new NotFoundException('user not found');
+    if (!user || !user.passwordHash || !user.email)
+      throw new NotFoundException("user not found");
 
+    const isCredentialsValid = await this.authService.comparePassword(
+      loginDto.password,
+      user.passwordHash,
+    );
 
-        const isCredentialsValid = await this.authService.comparePassword(loginDto.password,user.passwordHash);
-
-        if(!isCredentialsValid) {
-            throw new UnauthorizedException('Invalid credentials');
-        }
-
-        const payload:JwtPayload = {
-            email:user.email,
-            isVerified:user.isVerified,
-            username:user.username,
-
-        }
-       
-        const accessToken = await this.authService.generateJwtToken(payload,{expiresIn:"1h"});
-        const refreshToken = await this.authService.generateJwtToken(payload,{expiresIn:"7d"});
-
-        return { accessToken, refreshToken, message:`Welcome back ${user.username}!` };
-
+    if (!isCredentialsValid) {
+      throw new UnauthorizedException("Invalid credentials");
     }
 
-    @Post('signup')
-    async signup(@Body() createUserDto:CreateUserDto){
+    const payload: JwtPayload = {
+      id: user.id,
+      email: user.email,
+      isVerified: user.isVerified,
+      username: user.username,
+    };
 
-        const {email,password,username} = createUserDto;
+    const accessToken = await this.authService.generateJwtToken(payload, {
+      expiresIn: "1h",
+    });
+    const refreshToken = await this.authService.generateJwtToken(payload, {
+      expiresIn: "7d",
+    });
 
-        const user = await this.userRepository.findByEmail(email);
+    return {
+      accessToken,
+      refreshToken,
+      message: `Welcome back ${user.username}!`,
+      userId: user.id,
+    };
+  }
 
-        if(user) throw new ConflictException('User with this email already exists');
+  @Post("signup")
+  async signup(@Body() createUserDto: CreateUserDto) {
+    const { email, password, username } = createUserDto;
 
-        const hashedPassword = await this.authService.hashPassword(password);
+    const user = await this.userRepository.findByEmail(email);
 
-        const newUser = await this.userRepository.create({
-            email,
-            passwordHash:hashedPassword,
-            username
-        });
+    if (user)
+      throw new ConflictException("User with this email already exists");
 
-        const accessToken = await this.authService.generateJwtToken(newUser,{expiresIn:"1h"});
-        const refreshToken = await this.authService.generateJwtToken(newUser,{expiresIn:"7d"});
+    const hashedPassword = await this.authService.hashPassword(password);
 
-        return { accessToken, refreshToken, message:`Welcome abroad ${newUser.username}!` };
-    }
+    const newUser = await this.userRepository.create({
+      email,
+      passwordHash: hashedPassword,
+      username,
+    });
+
+    const payload: JwtPayload = {
+      id: newUser.id,
+      email: newUser.email,
+      username: newUser.username,
+      isVerified: newUser.isVerified,
+    };
+
+    const accessToken = await this.authService.generateJwtToken(payload, {
+      expiresIn: "7d",
+    });
+    const refreshToken = await this.authService.generateJwtToken(payload, {
+      expiresIn: "14d",
+    });
+
+    return {
+      accessToken,
+      refreshToken,
+      message: `Welcome abroad ${newUser.username}!`,
+    };
+  }
 }

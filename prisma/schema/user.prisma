@@ -9,4 +9,6 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   accounts      Account[]
+  sentRequests     Friend[] @relation("FriendRequester")
+  receivedRequests Friend[] @relation("FriendReceiver")
 }
