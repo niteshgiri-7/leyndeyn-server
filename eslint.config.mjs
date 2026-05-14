@@ -5,9 +5,12 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist',
+    ignores: [
+      'dist',
       'node_modules',
       'eslint.config.mjs',
+      'coverage',
+      'generated',
     ],
   },
   eslint.configs.recommended,
