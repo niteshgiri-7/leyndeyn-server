@@ -64,6 +64,7 @@ describe("AuthService", () => {
       username: "user",
       displayName: null,
       isVerified: false,
+      id: "1",
     };
 
     await expect(service.generateJwtToken(payload)).rejects.toThrow(
