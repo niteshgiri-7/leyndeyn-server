@@ -23,5 +23,6 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "types": ["jest"]
-  }
+  },
+  "exclude": ["node_modules", "dist", "coverage", "generated"]
 }
