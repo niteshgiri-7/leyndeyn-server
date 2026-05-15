@@ -13,5 +13,6 @@ model GroupMember{
 
     user User @relation(fields: [userId], references: [id])
     group Group @relation(fields: [groupId], references: [id])
-
+    
+    @@unique([groupId,userId])
 }
