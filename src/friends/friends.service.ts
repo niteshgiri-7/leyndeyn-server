@@ -127,6 +127,7 @@ export class FriendsService {
 
     const existingRecord = await this.prismaService.friend.findFirst({
       where: {
+        status: "PENDING",
         OR: [
           {
             receiverId: userId,
