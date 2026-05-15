@@ -7,6 +7,7 @@ import { FriendsModule } from "./friends/friends.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { UserModule } from "./user/user.module";
 import { JwtModule } from "@nestjs/jwt";
+import { GroupModule } from "./group/group.module";
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { JwtModule } from "@nestjs/jwt";
     UserModule,
     AuthModule,
     FriendsModule,
+    GroupModule,
   ],
   controllers: [AppController],
   providers: [AppService],
