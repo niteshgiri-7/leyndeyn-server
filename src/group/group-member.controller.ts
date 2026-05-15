@@ -7,11 +7,11 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
-import { GroupMemberDto } from "./dto/create-group-member.dto";
-import { GroupMemberService } from "./group-member.service";
 import { AuthGuard } from "../auth/guards/jwt-auth.guard";
-import { GroupAdminGuard } from "./guard/group-admin.guard";
 import { ALLOW_NON_ADMIN } from "./decorator/allow-non-admin";
+import { CreateGroupMemberDto } from "./dto/create-group-member.dto";
+import { GroupMemberService } from "./group-member.service";
+import { GroupAdminGuard } from "./guard/group-admin.guard";
 
 @UseGuards(AuthGuard, GroupAdminGuard)
 @Controller("group/:groupId/members")
@@ -20,7 +20,7 @@ export class GroupMemberController {
 
   @Post()
   async addMemberToGroup(
-    @Body() data: GroupMemberDto,
+    @Body() data: CreateGroupMemberDto,
     @Param("groupId") groupId: string,
   ) {
     return await this.groupMemberService.addMemberToGroup(

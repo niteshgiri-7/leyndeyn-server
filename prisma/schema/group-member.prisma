@@ -11,8 +11,8 @@ model GroupMember{
     joinedAt DateTime @default(now())  
     role GroupRole @default(MEMBER)
 
-    user User @relation(fields: [userId], references: [id])
-    group Group @relation(fields: [groupId], references: [id])
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+    group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
     
     @@unique([groupId,userId])
 }

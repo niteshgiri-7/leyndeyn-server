@@ -1,8 +1,13 @@
-import { ConflictException, NotFoundException } from "@nestjs/common";
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { UserRepository } from "../repository/user.repository";
 import { GroupRole } from "../../generated/prisma/client/enums";
 
+@Injectable()
 export class GroupMemberService {
   constructor(
     private readonly prisma: PrismaService,

@@ -13,6 +13,15 @@ import {
 export class GroupService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async validateGroupExists(groupId: string) {
+    const group = await this.prisma.group.findUnique({
+      where: {
+        id: groupId,
+      },
+    });
+    if (!group) throw new NotFoundException("Group not found");
+  }
+
   async createGroup(userId: string, data: GroupCreateInput) {
     const group = await this.prisma.group.create({
       data: {
@@ -43,8 +52,8 @@ export class GroupService {
   }
 
   async updateGroupById(id: string, data: GroupUpdateInput) {
-    const group = await this.findGroupById(id);
-    if (!group) throw new NotFoundException("Group not found");
+    await this.validateGroupExists(id);
+
     return await this.prisma.group.update({
       where: {
         id,
@@ -54,8 +63,7 @@ export class GroupService {
   }
 
   async deleteGroupById(id: string) {
-    const group = await this.findGroupById(id);
-    if (!group) throw new NotFoundException("Group not found");
+    await this.validateGroupExists(id);
 
     const groupWithMembers = await this.prisma.group.findFirst({
       where: {

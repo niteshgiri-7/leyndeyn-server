@@ -26,7 +26,7 @@ export class GroupAdminGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
 
     const userId = request.user?.id;
-    const groupId = request.params?.groupId[0]; // Extract groupId from route parameters
+    const groupId = request.params?.groupId as string;
 
     if (!userId) {
       throw new ForbiddenException("User not authenticated");
