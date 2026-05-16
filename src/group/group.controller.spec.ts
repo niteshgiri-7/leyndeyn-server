@@ -1,6 +1,8 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { GroupService } from "./group.service";
 import { GroupController } from "./group.controller";
+import { AuthGuard } from "../auth/guards/jwt-auth.guard";
+import { GroupAdminGuard } from "./guard/group-admin.guard";
 
 describe("GroupController", () => {
   let controller: GroupController;
@@ -27,7 +29,12 @@ describe("GroupController", () => {
           useValue: groupService,
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(AuthGuard)
+      .useValue({ canActivate: jest.fn().mockReturnValue(true) })
+      .overrideGuard(GroupAdminGuard)
+      .useValue({ canActivate: jest.fn().mockReturnValue(true) })
+      .compile();
 
     controller = module.get<GroupController>(GroupController);
   });
