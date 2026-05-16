@@ -3,9 +3,11 @@ model Group{
     name String
     description String?
     allowMembersToInvite Boolean @default(true)
+    allowMembersToManageCategory Boolean @default(false)
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
     members GroupMember[]
+    category Category[]
 }

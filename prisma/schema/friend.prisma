@@ -8,6 +8,8 @@ model Friend {
   receiver    User     @relation("FriendReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
   requester   User     @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
 
+  category Category[]
+
   @@unique([requesterId, receiverId])
   @@index([requesterId])
   @@index([receiverId])

@@ -10,6 +10,7 @@ model User {
   accounts         Account[]
   receivedRequests Friend[]  @relation("FriendReceiver")
   sentRequests     Friend[]  @relation("FriendRequester")
-
+  
+  category Category[]
   memberships GroupMember[]
 }

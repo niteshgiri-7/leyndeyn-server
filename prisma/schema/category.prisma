@@ -1,4 +1,4 @@
-enum CategoryScopr{
+enum CategoryScope {
     PERSONAL
     FRIENDSHIP
     GROUP
@@ -8,8 +8,18 @@ model Category{
     id String @id @default(uuid())
     name String
     description String?
+    scope CategoryScope @default(PERSONAL)
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+
+    userId String?
+    user User? @relation(fields:[userId],references: [id])
+
+    friendShipId String?
+    friendShip Friend? @relation(fields:[friendShipId],references: [id])
+
+    groupId String?
+    group Group? @relation(fields:[groupId],references: [id])
 
     budgets Budget[]
     expenses Expense[]
