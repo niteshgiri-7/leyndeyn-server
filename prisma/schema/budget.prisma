@@ -1,0 +1,18 @@
+enum BudgetResetStrategy {
+    DAILY
+    WEEKLY
+    MONTHLY
+}
+
+
+model Budget{
+    id String @id @default(uuid())
+    name String
+    amount Float
+    resetStrategy BudgetResetStrategy @default(MONTHLY)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    categoryId String
+    category Category @relation(fields: [categoryId], references: [id])
+}

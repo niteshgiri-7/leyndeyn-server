@@ -1,0 +1,12 @@
+model Expense{
+    id String @id @default(uuid())
+    amount Float
+    description String
+    
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    categoryId String
+    category Category @relation(fields: [categoryId], references:[id])
+
+}

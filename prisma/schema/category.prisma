@@ -1,0 +1,16 @@
+enum CategoryScopr{
+    PERSONAL
+    FRIENDSHIP
+    GROUP
+}
+
+model Category{
+    id String @id @default(uuid())
+    name String
+    description String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    budgets Budget[]
+    expenses Expense[]
+}

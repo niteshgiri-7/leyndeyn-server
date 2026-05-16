@@ -8,6 +8,7 @@ import { PrismaModule } from "./prisma/prisma.module";
 import { UserModule } from "./user/user.module";
 import { JwtModule } from "@nestjs/jwt";
 import { GroupModule } from "./group/group.module";
+import { CategoryModule } from "./category/category.module";
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { GroupModule } from "./group/group.module";
     AuthModule,
     FriendsModule,
     GroupModule,
+    CategoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -44,4 +44,6 @@ export class GroupController {
   async deleteGroupById(@Param("groupdId") groupdId: string) {
     return await this.groupService.deleteGroupById(groupdId);
   }
+
+  //TODO: api to change the flag to allow/disallow members to invite other members to the group
 }
