@@ -13,23 +13,33 @@ import { CreateGroupDto } from "./dto/create-group.dto";
 import { AuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorator/current-user.decorator";
 import { GroupAdminGuard } from "./guard/group-admin.guard";
+import { ALLOW_NON_ADMIN } from "./decorator/allow-non-admin";
+import type { JwtPayload } from "../auth/jwt-payload.type";
 
 @Controller("group")
 @UseGuards(AuthGuard, GroupAdminGuard)
 export class GroupController {
   constructor(private readonly groupService: GroupService) {}
 
+  @ALLOW_NON_ADMIN()
+  @Get("all")
+  async getAllGroupsForUser(@CurrentUser() user: JwtPayload) {
+    return await this.groupService.getAllGroupsForUser(user?.id);
+  }
+
+  @ALLOW_NON_ADMIN()
   @Get(":groupId")
   async getGroupById(@Param("groupId") groupId: string) {
     return await this.groupService.findGroupById(groupId);
   }
 
+  @ALLOW_NON_ADMIN()
   @Post()
   async createGroup(
-    @CurrentUser() userId: string,
+    @CurrentUser() user: JwtPayload,
     @Body() data: CreateGroupDto,
   ) {
-    return await this.groupService.createGroup(userId, data);
+    return await this.groupService.createGroup(user?.id, data);
   }
 
   @Put(":groupId")

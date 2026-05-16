@@ -14,10 +14,12 @@ import { CategoryService } from "./category.service";
 import { CreateCategoryDto } from "./dto/create-category.dto";
 import { CategoryScope } from "../../generated/prisma/client/enums";
 import { AuthGuard } from "../auth/guards/jwt-auth.guard";
-import { CategoryCreationGuard } from "./guard/create-category.guard";
+import { GroupCategoryManagerGuard } from "./guard/group-category-manager.guard";
 import { ALLOW_NON_ADMIN } from "../group/decorator/allow-non-admin";
+import { CurrentUser } from "../auth/decorator/current-user.decorator";
+import type { JwtPayload } from "../auth/jwt-payload.type";
 
-@UseGuards(AuthGuard, CategoryCreationGuard)
+@UseGuards(AuthGuard, GroupCategoryManagerGuard)
 @Controller("category")
 export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
@@ -26,15 +28,25 @@ export class CategoryController {
   @Get("/all")
   //ownerId could be userId,friendShipId or groupId based on the scope
   async getAllCategories(
+    @CurrentUser() user: JwtPayload,
     @Query("scope") scope: CategoryScope,
     @Query("ownerId") ownerId: string,
   ) {
-    return await this.categoryService.getAllCategories(scope, ownerId);
+    return await this.categoryService.getAllCategories(
+      scope,
+      scope === "PERSONAL" ? user.id : ownerId,
+    );
   }
 
   @Post()
-  async createCategory(@Body() data: CreateCategoryDto) {
-    return await this.categoryService.createCategory(data, data?.ownerId);
+  async createCategory(
+    @CurrentUser() user: JwtPayload,
+    @Body() data: CreateCategoryDto,
+  ) {
+    return await this.categoryService.createCategory(
+      data,
+      data?.scope === "PERSONAL" ? user.id : data.ownerId,
+    );
   }
 
   @Put(":categoryId")
@@ -52,7 +64,10 @@ export class CategoryController {
 
   @ALLOW_NON_ADMIN()
   @Get(":categoryId")
-  async getCategory(@Param("categoryId", ParseUUIDPipe) categoryId: string) {
-    return await this.categoryService.getCategoryById(categoryId);
+  async getCategory(
+    @CurrentUser() user: JwtPayload,
+    @Param("categoryId", ParseUUIDPipe) categoryId: string,
+  ) {
+    return await this.categoryService.getCategoryById(categoryId, user?.id);
   }
 }

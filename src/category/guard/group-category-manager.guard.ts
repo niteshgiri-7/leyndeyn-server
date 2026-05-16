@@ -10,7 +10,7 @@ import { CreateCategoryDto } from "../dto/create-category.dto";
 import { Reflector } from "@nestjs/core";
 
 @Injectable()
-export class CategoryCreationGuard implements CanActivate {
+export class GroupCategoryManagerGuard implements CanActivate {
   constructor(
     private prisma: PrismaService,
     private readonly reflector: Reflector,
@@ -30,22 +30,28 @@ export class CategoryCreationGuard implements CanActivate {
 
     const userId = req.user?.id;
 
-    const { scope, ownerId } = req.body;
+    const scope = req.body?.scope || req.query?.scope;
+    const ownerId = req.body?.ownerId || req.query?.ownerId;
+
+    if (!scope || !ownerId)
+      throw new ForbiddenException("Scope and ownerId are required");
 
     if (scope !== "GROUP") return true;
 
     const group = await this.prisma.group.findUnique({
       where: {
-        id: ownerId,
+        id: ownerId as string,
       },
     });
+
+    if (!group) throw new ForbiddenException("Group not found");
 
     if (group?.allowMembersToManageCategory) return true;
 
     const isGroupAdmin = await this.prisma.groupMember.findFirst({
       where: {
         userId,
-        groupId: ownerId,
+        groupId: ownerId as string,
         role: "ADMIN",
       },
     });

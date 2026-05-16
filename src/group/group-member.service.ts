@@ -40,6 +40,20 @@ export class GroupMemberService {
   async removeMemberFromGroup(groupId: string, userId: string) {
     await this.validateGroupExists(groupId);
 
+    const user = await this.prisma.groupMember.findFirst({
+      where: {
+        groupId,
+        userId,
+        role: "ADMIN",
+      },
+      select: {
+        role: true,
+      },
+    });
+
+    if (user?.role === "ADMIN")
+      throw new ConflictException("Cannot remove an admin from the group");
+
     await this.prisma.groupMember.delete({
       where: {
         groupId_userId: {

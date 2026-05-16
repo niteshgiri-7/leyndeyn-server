@@ -24,6 +24,23 @@ export class GroupService {
   }
 
   async createGroup(userId: string, data: GroupCreateInput) {
+    const exists = await this.prisma.group.findFirst({
+      where: {
+        name: data?.name,
+        members: {
+          some: {
+            userId,
+            role: GroupRole.ADMIN,
+          },
+        },
+      },
+    });
+
+    if (exists)
+      throw new BadRequestException(
+        "Group with this name and your role as admin already exists",
+      );
+
     const group = await this.prisma.group.create({
       data: {
         ...data,
@@ -89,6 +106,18 @@ export class GroupService {
     return await this.prisma.group.delete({
       where: {
         id,
+      },
+    });
+  }
+
+  async getAllGroupsForUser(userId: string) {
+    return await this.prisma.group.findMany({
+      where: {
+        members: {
+          some: {
+            userId,
+          },
+        },
       },
     });
   }

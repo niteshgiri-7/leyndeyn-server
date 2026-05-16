@@ -4,7 +4,7 @@ import { CategoryService } from "./category.service";
 import { CreateCategoryDto } from "./dto/create-category.dto";
 import { CategoryScope } from "../../generated/prisma/client/enums";
 import { AuthGuard } from "../auth/guards/jwt-auth.guard";
-import { CategoryCreationGuard } from "./guard/create-category.guard";
+import { CategoryCreationGuard } from "./guard/group-category-manager.guard";
 import { Category } from "../../generated/prisma/client/client";
 
 // ─── Mock Factory ─────────────────────────────────────────────────────────────
