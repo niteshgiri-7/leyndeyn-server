@@ -19,9 +19,9 @@ import { GroupAdminGuard } from "./guard/group-admin.guard";
 export class GroupController {
   constructor(private readonly groupService: GroupService) {}
 
-  @Get(":id")
-  async getGroupById(@Param("id") id: string) {
-    return await this.groupService.findGroupById(id);
+  @Get(":groupId")
+  async getGroupById(@Param("groupId") groupId: string) {
+    return await this.groupService.findGroupById(groupId);
   }
 
   @Post()
@@ -32,17 +32,17 @@ export class GroupController {
     return await this.groupService.createGroup(userId, data);
   }
 
-  @Put(":groupdId")
+  @Put(":groupId")
   async updateGroupById(
-    @Param("groupdId") groupdId: string,
+    @Param("groupId") groupId: string,
     @Body() data: Partial<CreateGroupDto>,
   ) {
-    return await this.groupService.updateGroupById(groupdId, data);
+    return await this.groupService.updateGroupById(groupId, data);
   }
 
-  @Delete(":groupdId")
-  async deleteGroupById(@Param("groupdId") groupdId: string) {
-    return await this.groupService.deleteGroupById(groupdId);
+  @Delete(":groupId")
+  async deleteGroupById(@Param("groupId") groupId: string) {
+    return await this.groupService.deleteGroupById(groupId);
   }
 
   //TODO: api to change the flag to allow/disallow members to invite other members to the group

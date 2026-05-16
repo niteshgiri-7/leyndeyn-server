@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsString } from "class-validator";
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from "class-validator";
 import { GroupRole } from "../../../generated/prisma/client/enums";
 
 export class CreateGroupMemberDto {
@@ -7,5 +7,6 @@ export class CreateGroupMemberDto {
   userId!: string;
 
   @IsEnum(GroupRole)
+  @IsOptional()
   role?: GroupRole;
 }

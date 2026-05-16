@@ -8,6 +8,7 @@ import {
   GroupCreateInput,
   GroupUpdateInput,
 } from "../../generated/prisma/client/models";
+import { GroupRole } from "../../generated/prisma/client/enums";
 
 @Injectable()
 export class GroupService {
@@ -33,7 +34,7 @@ export class GroupService {
                 id: userId,
               },
             },
-            role: "ADMIN",
+            role: GroupRole?.ADMIN,
           },
         },
       },
