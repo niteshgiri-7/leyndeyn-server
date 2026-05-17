@@ -6,5 +6,6 @@ import { GroupCategoryManagerGuard } from "./guard/group-category-manager.guard"
 @Module({
   controllers: [CategoryController],
   providers: [CategoryService, GroupCategoryManagerGuard],
+  exports: [CategoryService],
 })
 export class CategoryModule {}

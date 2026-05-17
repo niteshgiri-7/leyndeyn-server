@@ -9,6 +9,7 @@ import { UserModule } from "./user/user.module";
 import { JwtModule } from "@nestjs/jwt";
 import { GroupModule } from "./group/group.module";
 import { CategoryModule } from "./category/category.module";
+import { BudgetModule } from "./budget/budget.module";
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { CategoryModule } from "./category/category.module";
     FriendsModule,
     GroupModule,
     CategoryModule,
+    BudgetModule,
   ],
   controllers: [AppController],
   providers: [AppService],
