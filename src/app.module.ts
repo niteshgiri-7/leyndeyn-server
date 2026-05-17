@@ -10,6 +10,7 @@ import { JwtModule } from "@nestjs/jwt";
 import { GroupModule } from "./group/group.module";
 import { CategoryModule } from "./category/category.module";
 import { BudgetModule } from "./budget/budget.module";
+import { ExpenseModule } from "./expense/expense.module";
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { BudgetModule } from "./budget/budget.module";
     GroupModule,
     CategoryModule,
     BudgetModule,
+    ExpenseModule,
   ],
   controllers: [AppController],
   providers: [AppService],

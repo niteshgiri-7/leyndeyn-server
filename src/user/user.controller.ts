@@ -3,15 +3,17 @@ import { UserService } from "./user.service";
 
 @Controller("user")
 export class UserController {
-    constructor(private readonly userService:UserService){}
+  constructor(private readonly userService: UserService) {}
 
-    @Get("all")
-    async getAllUsers(){
-        return await this.userService.findAllUsers();
-    }
+  //TODO:add admin validation here later
+  @Get("all")
+  async getAllUsers() {
+    return await this.userService.findAllUsers();
+  }
 
-    @Get(":id")
-    async getUserById(@Param('id', ParseUUIDPipe) id: string) {
-        return await this.userService.findUserById(id);
-    }
+  //TODO: add validation(must be self or friend or same group member) before returning the user details
+  @Get(":id")
+  async getUserById(@Param("id", ParseUUIDPipe) id: string) {
+    return await this.userService.findUserById(id);
+  }
 }
