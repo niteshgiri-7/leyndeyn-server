@@ -4,8 +4,9 @@ import { CategoryService } from "./category.service";
 import { CreateCategoryDto } from "./dto/create-category.dto";
 import { CategoryScope } from "../../generated/prisma/client/enums";
 import { AuthGuard } from "../auth/guards/jwt-auth.guard";
-import { CategoryCreationGuard } from "./guard/group-category-manager.guard";
 import { Category } from "../../generated/prisma/client/client";
+import type { JwtPayload } from "../auth/jwt-payload.type";
+import { GroupCategoryManagerGuard } from "./guard/group-category-manager.guard";
 
 // ─── Mock Factory ─────────────────────────────────────────────────────────────
 
@@ -40,6 +41,12 @@ const mockGuard = { canActivate: jest.fn().mockReturnValue(true) };
 
 describe("CategoryController", () => {
   let controller: CategoryController;
+  const mockUser: JwtPayload = {
+    id: "user-uuid-1",
+    email: "test@local",
+    username: "tester",
+    isVerified: true,
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -48,7 +55,7 @@ describe("CategoryController", () => {
     })
       .overrideGuard(AuthGuard)
       .useValue(mockGuard)
-      .overrideGuard(CategoryCreationGuard)
+      .overrideGuard(GroupCategoryManagerGuard)
       .useValue(mockGuard)
       .compile();
 
@@ -65,13 +72,14 @@ describe("CategoryController", () => {
       categoryServiceMock.getAllCategories.mockResolvedValue(categories);
 
       const result = await controller.getAllCategories(
+        mockUser,
         CategoryScope.PERSONAL,
         "user-uuid-1",
       );
 
       expect(categoryServiceMock.getAllCategories).toHaveBeenCalledWith(
         CategoryScope.PERSONAL,
-        "user-uuid-1",
+        mockUser.id,
       );
       expect(result).toEqual(categories);
     });
@@ -87,6 +95,7 @@ describe("CategoryController", () => {
       categoryServiceMock.getAllCategories.mockResolvedValue(categories);
 
       const result = await controller.getAllCategories(
+        mockUser,
         CategoryScope.FRIENDSHIP,
         "friendship-uuid-1",
       );
@@ -109,6 +118,7 @@ describe("CategoryController", () => {
       categoryServiceMock.getAllCategories.mockResolvedValue(categories);
 
       const result = await controller.getAllCategories(
+        mockUser,
         CategoryScope.GROUP,
         "group-uuid-1",
       );
@@ -134,11 +144,11 @@ describe("CategoryController", () => {
       const created = makeMockCategory();
       categoryServiceMock.createCategory.mockResolvedValue(created);
 
-      const result = await controller.createCategory(dto);
+      const result = await controller.createCategory(mockUser, dto);
 
       expect(categoryServiceMock.createCategory).toHaveBeenCalledWith(
         dto,
-        dto.ownerId,
+        mockUser.id,
       );
       expect(result).toEqual(created);
     });
@@ -154,7 +164,7 @@ describe("CategoryController", () => {
         makeMockCategory({ name: "Transport", scope: CategoryScope.GROUP }),
       );
 
-      await controller.createCategory(dto);
+      await controller.createCategory(mockUser, dto);
 
       expect(categoryServiceMock.createCategory).toHaveBeenCalledWith(
         dto,
@@ -222,10 +232,11 @@ describe("CategoryController", () => {
       const category = makeMockCategory();
       categoryServiceMock.getCategoryById.mockResolvedValue(category);
 
-      const result = await controller.getCategory("uuid-1");
+      const result = await controller.getCategory(mockUser, "uuid-1");
 
       expect(categoryServiceMock.getCategoryById).toHaveBeenCalledWith(
         "uuid-1",
+        mockUser.id,
       );
       expect(result).toEqual(category);
     });
@@ -233,7 +244,10 @@ describe("CategoryController", () => {
     it("should return null if category does not exist", async () => {
       categoryServiceMock.getCategoryById.mockResolvedValue(null);
 
-      const result = await controller.getCategory("non-existent-uuid");
+      const result = await controller.getCategory(
+        mockUser,
+        "non-existent-uuid",
+      );
 
       expect(result).toBeNull();
     });

@@ -3,9 +3,16 @@ import { GroupService } from "./group.service";
 import { GroupController } from "./group.controller";
 import { AuthGuard } from "../auth/guards/jwt-auth.guard";
 import { GroupAdminGuard } from "./guard/group-admin.guard";
+import type { JwtPayload } from "../auth/jwt-payload.type";
 
 describe("GroupController", () => {
   let controller: GroupController;
+  const mockUser: JwtPayload = {
+    id: "user-1",
+    email: "test@local",
+    username: "tester",
+    isVerified: true,
+  };
   let groupService: {
     findGroupById: jest.Mock;
     createGroup: jest.Mock;
@@ -54,15 +61,14 @@ describe("GroupController", () => {
   });
 
   it("creates group", async () => {
-    const userId = "user-1";
     const payload = { name: "Test Group", description: "demo" };
     const created = { id: "group-1", ...payload };
     groupService.createGroup.mockResolvedValue(created);
 
-    const result = await controller.createGroup(userId, payload);
+    const result = await controller.createGroup(mockUser, payload);
 
     expect(result).toEqual(created);
-    expect(groupService.createGroup).toHaveBeenCalledWith(userId, payload);
+    expect(groupService.createGroup).toHaveBeenCalledWith(mockUser.id, payload);
   });
 
   it("updates group", async () => {

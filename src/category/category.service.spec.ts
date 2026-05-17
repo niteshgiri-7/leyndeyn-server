@@ -8,6 +8,7 @@ import { CategoryService } from "./category.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CategoryScope } from "../../generated/prisma/client/enums";
 import { Category } from "../../generated/prisma/client/client";
+import { CreateCategoryDto } from "./dto/create-category.dto";
 
 // ─── Mock Factory ────────────────────────────────────────────────────────────
 
@@ -117,8 +118,7 @@ describe("CategoryService", () => {
       description: "Food expenses",
       scope: CategoryScope.PERSONAL,
       ownerId: "user-uuid-1",
-      userId: "user-uuid-1",
-    };
+    } as unknown as CreateCategoryDto;
 
     it("should create and return a category", async () => {
       const expected = makeMockCategory();
@@ -131,11 +131,18 @@ describe("CategoryService", () => {
         where: {
           name: createInput.name,
           scope: createInput.scope,
-          userId: createInput.userId,
+          userId: createInput.ownerId,
         },
       });
+      const expectedCreateData = {
+        name: createInput.name,
+        description: createInput.description,
+        scope: createInput.scope,
+        userId: createInput.ownerId,
+      };
+
       expect(prismaMock.category.create).toHaveBeenCalledWith({
-        data: createInput,
+        data: expectedCreateData,
       });
       expect(result).toEqual(expected);
     });
@@ -161,16 +168,25 @@ describe("CategoryService", () => {
     it("should update and return the category", async () => {
       const updated = makeMockCategory({ name: "Transport" });
       prismaMock.category.findUnique.mockResolvedValue(makeMockCategory());
+      // ensure no conflicting category found
+      prismaMock.category.findFirst.mockResolvedValue(null);
       prismaMock.category.update.mockResolvedValue(updated);
 
-      const result = await service.updateCategory(
-        { name: "Transport" },
-        "uuid-1",
-      );
+      const updateData = {
+        name: "Transport",
+        scope: CategoryScope.PERSONAL,
+        ownerId: "user-uuid-1",
+      };
+
+      const result = await service.updateCategory(updateData, "uuid-1");
 
       expect(prismaMock.category.update).toHaveBeenCalledWith({
         where: { id: "uuid-1" },
-        data: { name: "Transport" },
+        data: {
+          name: "Transport",
+          scope: CategoryScope.PERSONAL,
+          userId: "user-uuid-1",
+        },
       });
       expect(result).toEqual(updated);
     });
@@ -279,21 +295,43 @@ describe("CategoryService", () => {
   describe("getCategoryById", () => {
     it("should return a category by id", async () => {
       const category = makeMockCategory();
-      prismaMock.category.findUnique.mockResolvedValue(category);
+      prismaMock.category.findFirst.mockResolvedValue(category);
 
-      const result = await service.getCategoryById("uuid-1");
+      const result = await service.getCategoryById("uuid-1", "user-uuid-1");
 
-      expect(prismaMock.category.findUnique).toHaveBeenCalledWith({
-        where: { id: "uuid-1" },
+      expect(prismaMock.category.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: "uuid-1",
+          OR: [
+            { userId: "user-uuid-1" },
+            {
+              friendShip: {
+                OR: [
+                  { receiverId: "user-uuid-1" },
+                  { requesterId: "user-uuid-1" },
+                ],
+              },
+            },
+            {
+              group: {
+                members: {
+                  some: { userId: "user-uuid-1" },
+                },
+              },
+            },
+          ],
+        },
+        include: { budgets: true },
       });
       expect(result).toEqual(category);
     });
 
-    it("should return null if category does not exist", async () => {
-      prismaMock.category.findUnique.mockResolvedValue(null);
+    it("should throw ForbiddenException if category does not exist or access denied", async () => {
+      prismaMock.category.findFirst.mockResolvedValue(null);
 
-      const result = await service.getCategoryById("non-existent-uuid");
-      expect(result).toBeNull();
+      await expect(
+        service.getCategoryById("non-existent-uuid", "user-uuid-1"),
+      ).rejects.toThrow();
     });
   });
 });

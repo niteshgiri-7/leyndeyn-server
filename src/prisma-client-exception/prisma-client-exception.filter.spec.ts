@@ -77,7 +77,7 @@ describe("PrismaClientExceptionFilter", () => {
     expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
     expect(mockResponse.json).toHaveBeenCalledWith({
       statusCode: HttpStatus.BAD_REQUEST,
-      message: "Invalid database query",
+      message: "Invalid query",
       errorCode: "UNKNOWN_ERROR",
     });
   });
