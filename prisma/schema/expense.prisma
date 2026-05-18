@@ -1,3 +1,10 @@
+enum SplitStrategy {
+   EQUAL
+   EXACT
+   PERCENTAGE
+   NONE
+}
+
 model Expense{
     id String @id @default(uuid())
     amount Float
@@ -6,11 +13,15 @@ model Expense{
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
+    splitStrategy SplitStrategy @default(NONE)
+
     spentById String
     spentBy User @relation(fields:[spentById],references: [id])
 
     
     categoryId String
     category Category @relation(fields: [categoryId], references:[id])
+
+    participants ExpenseParticipant[]
 
 }

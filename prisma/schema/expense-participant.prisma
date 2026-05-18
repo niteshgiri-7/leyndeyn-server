@@ -1,0 +1,14 @@
+model ExpenseParticipant {
+      id String @id @default(uuid())
+      // amount this user owes to the expense.spentBy
+      amount Float
+
+      createdAt DateTime @default(now())
+      updatedAt DateTime @updatedAt
+
+      expenseId String
+      expense Expense @relation(fields:[expenseId],references:[id],onDelete:Cascade)
+     
+      userId String
+      user User @relation(fields:[userId],references: [id],onDelete:Cascade)
+}

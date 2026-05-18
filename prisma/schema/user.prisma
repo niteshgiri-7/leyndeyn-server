@@ -11,8 +11,8 @@ model User {
   receivedRequests Friend[]  @relation("FriendReceiver")
   sentRequests     Friend[]  @relation("FriendRequester")
 
-  expenses Expense[]
-  
+  expenses Expense[] //a user can have multiple expenses
+  expenseParticipants ExpenseParticipant[]
   category Category[]
   memberships GroupMember[]
 }

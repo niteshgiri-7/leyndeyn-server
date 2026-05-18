@@ -45,6 +45,7 @@ const makeMockExpense = (overrides: Partial<Expense> = {}): Expense => ({
   updatedAt: new Date("2024-01-10"),
   spentById: "user-1",
   categoryId: "category-1",
+  splitStrategy: "EQUAL",
   ...overrides,
 });
 
