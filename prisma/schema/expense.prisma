@@ -23,5 +23,4 @@ model Expense{
     category Category @relation(fields: [categoryId], references:[id])
 
     participants ExpenseParticipant[]
-
 }

@@ -15,4 +15,6 @@ model User {
   expenseParticipants ExpenseParticipant[]
   category Category[]
   memberships GroupMember[]
+  settlementSent ExpenseSettlement[] @relation("SettlementPayer")
+  settlementReceived ExpenseSettlement[] @relation("SettlementReceiver")
 }

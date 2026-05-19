@@ -1,0 +1,28 @@
+enum SettlementStatus {
+    PENDING
+    SETTLED
+    REJECTED
+}
+
+model ExpenseSettlement{
+    id String @id @default(uuid())
+     
+    amount Float
+    description String? //the description of the settlemnt(written by the debt payer)
+    status SettlementStatus @default(PENDING)
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt()
+
+    fromUserId String
+    fromUser User @relation("SettlementPayer",fields: [fromUserId],references: [id])
+
+    toUserId String
+    toUser User @relation("SettlementReceiver",fields: [toUserId],references: [id])
+
+    groupId String?
+    group Group? @relation(fields:[groupId],references: [id])
+
+    friendShipId String?
+    friendShip Friend? @relation(fields:[friendShipId],references:[id])
+}
