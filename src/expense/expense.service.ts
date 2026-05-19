@@ -8,10 +8,14 @@ import {
   SplitStrategy,
 } from "../../generated/prisma/client/enums";
 import { PrismaService } from "../prisma/prisma.service";
-import { CreateExpenseDto } from "./dto/create-expense.dto";
+import {
+  CreateExpenseDto,
+  ExpenseParticipantDto,
+} from "./dto/create-expense.dto";
 import { DateRangeDto } from "./dto/date-range.dto";
 import { SplitStrategyFactory } from "./split/split-strategy.factory";
 import { IParticipant } from "./split/split.types";
+import { UpdateExpenseDto } from "./dto/update-expense.dto";
 
 @Injectable()
 export class ExpenseService {
@@ -151,7 +155,15 @@ export class ExpenseService {
 
       if (data?.scope === "PERSONAL") return expense;
 
-      const participants = this.resolveParticipantsForExpense(data);
+      if (!data?.participants || !data?.participants?.length)
+        throw new BadRequestException(
+          "Participants are required for non-personal expenses",
+        );
+
+      const participants = this.resolveParticipantsForExpense({
+        participants: data.participants,
+        splitStrategy: chosenSplitStrategy,
+      });
 
       const splitStrategy =
         this.splitStrategyFactory.getStrategy(chosenSplitStrategy);
@@ -171,10 +183,6 @@ export class ExpenseService {
     });
   }
 
-  // async updateExpense(expenseId: string, data: Partial<CreateExpenseDto>) {
-
-  // }
-
   async deleteExpenseById(expenseId: string) {
     const existing = await this.prisma.expense.findUnique({
       where: {
@@ -191,9 +199,11 @@ export class ExpenseService {
     });
   }
 
-  resolveParticipantsForExpense(data: CreateExpenseDto): IParticipant[] {
+  resolveParticipantsForExpense(data: {
+    participants: ExpenseParticipantDto[];
+    splitStrategy: SplitStrategy;
+  }): IParticipant[] {
     if (!data?.participants) return [];
-
     const participants = data?.participants?.map((p) => {
       if (data?.splitStrategy === SplitStrategy.EXACT && p?.exactAmount == null)
         throw new BadRequestException(
@@ -222,5 +232,70 @@ export class ExpenseService {
 
     if (category?.scope !== scope)
       throw new BadRequestException("Invalid category or category scope");
+  }
+
+  async updateExpenseById(expenseId: string, data: UpdateExpenseDto) {
+    return await this.prisma.$transaction(async (prisma) => {
+      const existingExpense = await prisma.expense.findUnique({
+        where: {
+          id: expenseId,
+        },
+        select: {
+          category: {
+            select: {
+              scope: true,
+            },
+          },
+        },
+      });
+
+      if (!existingExpense) throw new NotFoundException("Expense not found");
+
+      const updatedExpense = await prisma.expense.update({
+        where: {
+          id: expenseId,
+        },
+        data: {
+          amount: data?.amount,
+          description: data?.description,
+          categoryId: data?.categoryId,
+          splitStrategy: data?.splitStrategy,
+        },
+      });
+
+      await this.validateCategoryScope(
+        data.categoryId,
+        existingExpense.category.scope,
+      );
+
+      if (!data?.participants || !data?.participants?.length)
+        return updatedExpense;
+
+      const chosenSplitStrategy = data.splitStrategy ?? SplitStrategy.NONE;
+
+      const participants = this.resolveParticipantsForExpense({
+        participants: data.participants,
+        splitStrategy: chosenSplitStrategy,
+      });
+
+      const splitStrategy =
+        this.splitStrategyFactory.getStrategy(chosenSplitStrategy);
+
+      const calculatedSplits = splitStrategy.calculate({
+        amount: updatedExpense?.amount,
+        participants,
+      });
+
+      return await prisma.expenseParticipant.updateMany({
+        where: {
+          expenseId,
+        },
+        data: calculatedSplits?.map((split) => ({
+          userId: split.userId,
+          expenseId,
+          amount: split.amount,
+        })),
+      });
+    });
   }
 }

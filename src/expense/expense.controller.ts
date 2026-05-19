@@ -6,6 +6,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Put,
   Query,
   UseGuards,
 } from "@nestjs/common";
@@ -17,35 +18,18 @@ import { DateRangeDto } from "./dto/date-range.dto";
 import { ExpenseService } from "./expense.service";
 import { ManageExpenseGuard } from "./guard/manage-expense.guard";
 import { CheckAccess } from "./decorator/check-access.decorator";
+import { UpdateExpenseDto } from "./dto/update-expense.dto";
 
 @UseGuards(AuthGuard, ManageExpenseGuard)
 @Controller("expense")
 export class ExpenseController {
   constructor(private readonly expenseService: ExpenseService) {}
 
+  //Personal expenses
+
   @Post("personal")
   async createPersonalExpense(
     @CurrentUser() user: JwtPayload,
-    @Body() data: CreateExpenseDto,
-  ) {
-    return await this.expenseService.createExpense(data, user.id);
-  }
-
-  @CheckAccess("group")
-  @Post("/group/:groupId")
-  async createGroupExpense(
-    @CurrentUser() user: JwtPayload,
-    @Param("groupId", ParseUUIDPipe) _groupId: string,
-    @Body() data: CreateExpenseDto,
-  ) {
-    return await this.expenseService.createExpense(data, user.id);
-  }
-
-  @CheckAccess("friendship")
-  @Post("/friendShip/:friendShipId")
-  async createFriendShipExpense(
-    @CurrentUser() user: JwtPayload,
-    @Param("friendShipId", ParseUUIDPipe) _friendShipId: string,
     @Body() data: CreateExpenseDto,
   ) {
     return await this.expenseService.createExpense(data, user.id);
@@ -57,6 +41,37 @@ export class ExpenseController {
     @Query() dateRange?: DateRangeDto,
   ) {
     return await this.expenseService.getPersonalExpenses(user.id, dateRange);
+  }
+
+  @CheckAccess("expense")
+  @Put("personal/:expenseId")
+  async updatePersonalExpense(
+    @Param("expenseId", ParseUUIDPipe) expenseId: string,
+    @Body() data: UpdateExpenseDto,
+  ) {
+    return await this.expenseService.updateExpenseById(expenseId, data);
+  }
+
+  //Group
+
+  @CheckAccess("group")
+  @Post("/group/:groupId")
+  async createGroupExpense(
+    @CurrentUser() user: JwtPayload,
+    @Param("groupId", ParseUUIDPipe) _groupId: string,
+    @Body() data: CreateExpenseDto,
+  ) {
+    return await this.expenseService.createExpense(data, user.id);
+  }
+
+  @CheckAccess("group")
+  @Put(":expenseId/group/:groupId")
+  async updateGroupExpense(
+    @Param("expenseId", ParseUUIDPipe) expenseId: string,
+    @Param("groupId", ParseUUIDPipe) _groupId: string,
+    @Body() data: UpdateExpenseDto,
+  ) {
+    return await this.expenseService.updateExpenseById(expenseId, data);
   }
 
   @CheckAccess("group")
@@ -81,6 +96,28 @@ export class ExpenseController {
     );
   }
 
+  //Friendship
+
+  @CheckAccess("friendship")
+  @Post("/friendShip/:friendShipId")
+  async createFriendShipExpense(
+    @CurrentUser() user: JwtPayload,
+    @Param("friendShipId", ParseUUIDPipe) _friendShipId: string,
+    @Body() data: CreateExpenseDto,
+  ) {
+    return await this.expenseService.createExpense(data, user.id);
+  }
+
+  @CheckAccess("friendship")
+  @Put(":expenseId/friendShip/:friendShipId")
+  async updateFriendShipExpense(
+    @Param("expenseId", ParseUUIDPipe) expenseId: string,
+    @Param("friendShipId", ParseUUIDPipe) _friendShipId: string,
+    @Body() data: UpdateExpenseDto,
+  ) {
+    return await this.expenseService.updateExpenseById(expenseId, data);
+  }
+
   @CheckAccess("friendship")
   @Get("/friendShip/:friendShipId")
   async getExpensesByFriendShipId(
@@ -93,14 +130,7 @@ export class ExpenseController {
     );
   }
 
-  //TODO: Update Expense API
-  // @Put(":expenseId")
-  // async updateExpenseById(
-  //   @Param("expenseId", ParseUUIDPipe) expenseId: string,
-  //   @Body() data: Partial<CreateExpenseDto>,
-  // ) {
-  //   return await this.expenseService.updateExpense(expenseId, data);
-  // }
+  //generic
 
   @CheckAccess("expense")
   @Delete(":expenseId")

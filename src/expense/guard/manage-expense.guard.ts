@@ -53,7 +53,7 @@ export class ManageExpenseGuard implements CanActivate {
         return await this.checkExpenseOwnerShip(userId, expenseId);
       }
       default: {
-        throw new ForbiddenException("Invalid resource type");
+        return true;
       }
     }
   }
