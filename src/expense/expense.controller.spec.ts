@@ -2,10 +2,12 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { ExpenseController } from "./expense.controller";
 import { ExpenseService } from "./expense.service";
 import { AuthGuard } from "../auth/guards/jwt-auth.guard";
+import { ManageExpenseGuard } from "./guard/manage-expense.guard";
 import { CreateExpenseDto } from "./dto/create-expense.dto";
 import { DateRangeDto } from "./dto/date-range.dto";
 import type { Expense } from "../../generated/prisma/client/browser";
 import type { JwtPayload } from "../auth/jwt-payload.type";
+import { UpdateExpenseDto } from "./dto/update-expense.dto";
 
 type ExpenseServiceMock = {
   createExpense: jest.Mock<Promise<Expense>, [CreateExpenseDto, string]>;
@@ -25,7 +27,7 @@ type ExpenseServiceMock = {
     Promise<Expense[]>,
     [string, DateRangeDto | undefined]
   >;
-  updateExpense: jest.Mock<
+  updateExpenseById: jest.Mock<
     Promise<Expense>,
     [string, Partial<CreateExpenseDto>]
   >;
@@ -80,7 +82,7 @@ describe("ExpenseController", () => {
         Promise<Expense[]>,
         [string, DateRangeDto | undefined]
       >(),
-      updateExpense: jest.fn<
+      updateExpenseById: jest.fn<
         Promise<Expense>,
         [string, Partial<CreateExpenseDto>]
       >(),
@@ -98,6 +100,8 @@ describe("ExpenseController", () => {
     })
       .overrideGuard(AuthGuard)
       .useValue(mockGuard)
+      .overrideGuard(ManageExpenseGuard)
+      .useValue(mockGuard)
       .compile();
 
     controller = module.get<ExpenseController>(ExpenseController);
@@ -114,11 +118,12 @@ describe("ExpenseController", () => {
       amount: 100,
       description: "Coffee",
       categoryId: "category-1",
+      scope: "PERSONAL",
     };
     const created = makeMockExpense();
     expenseService.createExpense.mockResolvedValue(created);
 
-    const result = await controller.createExpense(mockUser, dto);
+    const result = await controller.createPersonalExpense(mockUser, dto);
 
     expect(result).toEqual(created);
     expect(expenseService.createExpense).toHaveBeenCalledWith(dto, mockUser.id);
@@ -128,7 +133,10 @@ describe("ExpenseController", () => {
     const expenses = [makeMockExpense()];
     expenseService.getExpenseByCategoryId.mockResolvedValue(expenses);
 
-    const result = await controller.getExpensesByCategoryId("category-1");
+    const result = await controller.getExpensesOfCategoryInGroup(
+      "group-1",
+      "category-1",
+    );
 
     expect(result).toEqual(expenses);
     expect(expenseService.getExpenseByCategoryId).toHaveBeenCalledWith(
@@ -177,14 +185,21 @@ describe("ExpenseController", () => {
   });
 
   it("updates an expense", async () => {
-    const updateDto: Partial<CreateExpenseDto> = { amount: 150 };
+    const updateDto: UpdateExpenseDto = {
+      amount: 150,
+      categoryId: "category-1",
+      description: "Updated expense",
+    };
     const updated = makeMockExpense({ amount: 150 });
-    expenseService.updateExpense.mockResolvedValue(updated);
+    expenseService.updateExpenseById.mockResolvedValue(updated);
 
-    const result = await controller.updateExpenseById("expense-1", updateDto);
+    const result = await controller.updatePersonalExpense(
+      "expense-1",
+      updateDto,
+    );
 
     expect(result).toEqual(updated);
-    expect(expenseService.updateExpense).toHaveBeenCalledWith(
+    expect(expenseService.updateExpenseById).toHaveBeenCalledWith(
       "expense-1",
       updateDto,
     );

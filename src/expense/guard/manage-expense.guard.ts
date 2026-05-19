@@ -25,16 +25,11 @@ export class ManageExpenseGuard implements CanActivate {
       context.getHandler(),
     );
 
-    const isPublic = this.reflector.get<boolean>(
-      "allow_non_admin",
-      context.getHandler(),
-    );
-    if (isPublic) return true;
-
     const request = context.switchToHttp().getRequest<Request>();
 
     const userId = request.user?.id;
 
+    const expenseId = request.params?.expenseId as string;
     const groupId = request.params?.groupId as string;
     const friendShipId = request.params?.friendShipId as string;
 
@@ -42,13 +37,15 @@ export class ManageExpenseGuard implements CanActivate {
 
     switch (resource) {
       case "group": {
+        if (!groupId) throw new ForbiddenException("Group ID is missing");
         return await this.checkGroupMemberShip(userId, groupId);
       }
       case "friendship": {
+        if (!friendShipId)
+          throw new ForbiddenException("Friendship ID is missing");
         return await this.checkFriendShip(userId, friendShipId);
       }
       case "expense": {
-        const expenseId = request.params?.expenseId as string;
         if (!expenseId) throw new ForbiddenException("Expense ID is missing");
         return await this.checkExpenseOwnerShip(userId, expenseId);
       }
