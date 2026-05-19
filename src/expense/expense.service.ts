@@ -1,11 +1,24 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import {
+  CategoryScope,
+  SplitStrategy,
+} from "../../generated/prisma/client/enums";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateExpenseDto } from "./dto/create-expense.dto";
 import { DateRangeDto } from "./dto/date-range.dto";
+import { SplitStrategyFactory } from "./split/split-strategy.factory";
+import { IParticipant } from "./split/split.types";
 
 @Injectable()
 export class ExpenseService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly splitStrategyFactory: SplitStrategyFactory,
+  ) {}
 
   async getExpenseById(expenseId: string) {
     const expense = await this.prisma.expense.findUnique({
@@ -115,31 +128,52 @@ export class ExpenseService {
     });
   }
 
-  async createExpense(data: CreateExpenseDto, userId: string) {
-    return await this.prisma.expense.create({
-      data: {
-        ...data,
-        spentById: userId,
-      },
+  async createExpense(data: CreateExpenseDto, spentById: string) {
+    return await this.prisma.$transaction(async (prisma) => {
+      if (data?.scope !== CategoryScope.PERSONAL && !data?.splitStrategy)
+        throw new BadRequestException(
+          "Split strategy is required for non personal expenses",
+        );
+
+      const chosenSplitStrategy = data.splitStrategy ?? SplitStrategy.NONE;
+
+      const expense = await prisma.expense.create({
+        data: {
+          amount: data.amount,
+          description: data.description,
+          categoryId: data.categoryId,
+          spentById,
+          splitStrategy: chosenSplitStrategy,
+        },
+      });
+
+      await this.validateCategoryScope(data.categoryId, data.scope);
+
+      if (data?.scope === "PERSONAL") return expense;
+
+      const participants = this.resolveParticipantsForExpense(data);
+
+      const splitStrategy =
+        this.splitStrategyFactory.getStrategy(chosenSplitStrategy);
+
+      const calculatedSplits = splitStrategy.calculate({
+        amount: data.amount,
+        participants,
+      });
+
+      return await prisma.expenseParticipant.createMany({
+        data: calculatedSplits.map((s) => ({
+          expenseId: expense.id,
+          userId: s.userId,
+          amount: s.amount,
+        })),
+      });
     });
   }
 
-  async updateExpense(expenseId: string, data: Partial<CreateExpenseDto>) {
-    const existing = await this.prisma.expense.findUnique({
-      where: {
-        id: expenseId,
-      },
-    });
+  // async updateExpense(expenseId: string, data: Partial<CreateExpenseDto>) {
 
-    if (!existing) throw new NotFoundException("Expense not found");
-
-    return await this.prisma.expense.update({
-      where: {
-        id: expenseId,
-      },
-      data,
-    });
-  }
+  // }
 
   async deleteExpenseById(expenseId: string) {
     const existing = await this.prisma.expense.findUnique({
@@ -155,5 +189,38 @@ export class ExpenseService {
         id: expenseId,
       },
     });
+  }
+
+  resolveParticipantsForExpense(data: CreateExpenseDto): IParticipant[] {
+    if (!data?.participants) return [];
+
+    const participants = data?.participants?.map((p) => {
+      if (data?.splitStrategy === SplitStrategy.EXACT && p?.exactAmount == null)
+        throw new BadRequestException(
+          "Exact amount is required for exact split strategy",
+        );
+
+      return {
+        userId: p.participantId,
+        exactAmount: p.exactAmount,
+        percentage: p.percentage,
+      };
+    });
+
+    return participants;
+  }
+
+  async validateCategoryScope(categoryId: string, scope: CategoryScope) {
+    const category = await this.prisma.category.findUnique({
+      where: {
+        id: categoryId,
+      },
+      select: {
+        scope: true,
+      },
+    });
+
+    if (category?.scope !== scope)
+      throw new BadRequestException("Invalid category or category scope");
   }
 }

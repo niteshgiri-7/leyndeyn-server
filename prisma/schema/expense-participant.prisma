@@ -1,6 +1,6 @@
 model ExpenseParticipant {
       id String @id @default(uuid())
-      // amount this user owes to the expense.spentBy
+      // amount the user owes to the expense.spentBy
       amount Float
 
       createdAt DateTime @default(now())
@@ -8,7 +8,8 @@ model ExpenseParticipant {
 
       expenseId String
       expense Expense @relation(fields:[expenseId],references:[id],onDelete:Cascade)
-     
+
+      //expense participant that owes to the expense.spentBy
       userId String
       user User @relation(fields:[userId],references: [id],onDelete:Cascade)
 }

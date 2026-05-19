@@ -1,0 +1,109 @@
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+} from "@nestjs/common";
+import { PrismaService } from "../../prisma/prisma.service";
+import { Reflector } from "@nestjs/core";
+import { Request } from "express";
+
+export type ResourceType = "group" | "friendship" | "expense";
+
+export const RESOURCE_KEY = "resource";
+
+@Injectable()
+export class ManageExpenseGuard implements CanActivate {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly reflector: Reflector,
+  ) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const resource = this.reflector.get<ResourceType>(
+      RESOURCE_KEY,
+      context.getHandler(),
+    );
+
+    const isPublic = this.reflector.get<boolean>(
+      "allow_non_admin",
+      context.getHandler(),
+    );
+    if (isPublic) return true;
+
+    const request = context.switchToHttp().getRequest<Request>();
+
+    const userId = request.user?.id;
+
+    const groupId = request.params?.groupId as string;
+    const friendShipId = request.params?.friendShipId as string;
+
+    if (!userId) throw new ForbiddenException("User is not authenticated");
+
+    switch (resource) {
+      case "group": {
+        return await this.checkGroupMemberShip(userId, groupId);
+      }
+      case "friendship": {
+        return await this.checkFriendShip(userId, friendShipId);
+      }
+      case "expense": {
+        const expenseId = request.params?.expenseId as string;
+        if (!expenseId) throw new ForbiddenException("Expense ID is missing");
+        return await this.checkExpenseOwnerShip(userId, expenseId);
+      }
+      default: {
+        throw new ForbiddenException("Invalid resource type");
+      }
+    }
+  }
+
+  private async checkGroupMemberShip(
+    userId: string,
+    groupId: string,
+  ): Promise<boolean> {
+    const member = await this.prisma.groupMember.findFirst({
+      where: {
+        groupId,
+        userId,
+      },
+    });
+
+    if (!member)
+      throw new ForbiddenException("User is not a member of the group");
+
+    return true;
+  }
+
+  private async checkFriendShip(
+    userId: string,
+    friendShipId: string,
+  ): Promise<boolean> {
+    const friendShip = await this.prisma.friend.findFirst({
+      where: {
+        id: friendShipId,
+        OR: [{ receiverId: userId }, { requesterId: userId }],
+      },
+    });
+    if (!friendShip)
+      throw new ForbiddenException("User is not a part of the friendship");
+
+    return true;
+  }
+
+  private async checkExpenseOwnerShip(
+    userId: string,
+    expenseId: string,
+  ): Promise<boolean> {
+    const expense = await this.prisma.expense.findFirst({
+      where: {
+        id: expenseId,
+        spentById: userId,
+      },
+    });
+    if (!expense)
+      throw new ForbiddenException("User is not the owner of the expense");
+
+    return true;
+  }
+}
