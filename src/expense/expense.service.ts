@@ -42,7 +42,6 @@ export class ExpenseService {
       where: {
         spentById: userId,
         category: {
-          scope: "PERSONAL",
           userId,
         },
         createdAt: {
@@ -79,7 +78,6 @@ export class ExpenseService {
     return await this.prisma.expense.findMany({
       where: {
         category: {
-          scope: "GROUP",
           groupId,
         },
         createdAt: {

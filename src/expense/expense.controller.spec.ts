@@ -110,7 +110,6 @@ describe("ExpenseController", () => {
       amount: 100,
       description: "Coffee",
       categoryId: "category-1",
-      scope: "PERSONAL",
     };
     const created = makeMockExpense();
     expenseService.createExpense.mockResolvedValue(created);

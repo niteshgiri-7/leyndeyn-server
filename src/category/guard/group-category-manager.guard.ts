@@ -30,13 +30,7 @@ export class GroupCategoryManagerGuard implements CanActivate {
 
     const userId = req.user?.id;
 
-    const scope = req.body?.scope || req.query?.scope;
     const ownerId = req.body?.ownerId || req.query?.ownerId;
-
-    if (!scope || !ownerId)
-      throw new ForbiddenException("Scope and ownerId are required");
-
-    if (scope !== "GROUP") return true;
 
     const group = await this.prisma.group.findUnique({
       where: {
