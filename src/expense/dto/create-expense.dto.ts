@@ -10,6 +10,11 @@ import {
 } from "class-validator";
 import { SplitStrategy } from "../../../generated/prisma/client/enums";
 
+export enum ExpenseScope {
+  PERSONAL,
+  GROUP,
+}
+
 export class ExpenseParticipantDto {
   @IsString()
   @IsNotEmpty()
@@ -34,6 +39,10 @@ export class CreateExpenseDto {
   @IsString()
   @IsNotEmpty()
   description!: string;
+
+  @IsEnum(ExpenseScope)
+  @IsNotEmpty()
+  scope!: ExpenseScope;
 
   @IsString()
   @IsNotEmpty()

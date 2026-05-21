@@ -2,7 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { ExpenseService } from "./expense.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { CreateExpenseDto } from "./dto/create-expense.dto";
+import { CreateExpenseDto, ExpenseScope } from "./dto/create-expense.dto";
 import { DateRangeDto } from "./dto/date-range.dto";
 import type { Expense, Category } from "../../generated/prisma/client/client";
 import { SplitStrategy } from "../../generated/prisma/client/enums";
@@ -268,6 +268,7 @@ describe("ExpenseService", () => {
         amount: 100,
         description: "Coffee",
         categoryId: "category-1",
+        scope: ExpenseScope.PERSONAL,
         splitStrategy: SplitStrategy.NONE,
         participants: [
           {
@@ -297,6 +298,7 @@ describe("ExpenseService", () => {
         amount: 100,
         description: "Dinner",
         categoryId: "category-1",
+        scope: ExpenseScope.GROUP,
         splitStrategy: SplitStrategy.EQUAL,
         participants: [
           {
@@ -339,6 +341,7 @@ describe("ExpenseService", () => {
         amount: 100,
         description: "Dinner",
         categoryId: "category-1",
+        scope: ExpenseScope.GROUP,
         participants: [
           {
             participantId: "user-2",

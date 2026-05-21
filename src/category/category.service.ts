@@ -91,7 +91,7 @@ export class CategoryService {
   }
 
   async getAllCategories(ownerId: string) {
-    return await this.prismaService.category.findFirst({
+    return await this.prismaService.category.findMany({
       where: {
         OR: [{ groupId: ownerId }, { userId: ownerId }],
       },
