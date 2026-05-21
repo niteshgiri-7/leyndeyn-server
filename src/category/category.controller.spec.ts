@@ -13,7 +13,6 @@ const makeMockCategory = (overrides: Partial<Category> = {}): Category => ({
   id: "uuid-1",
   name: "Food",
   description: "Food expenses",
-  scope: "PERSONAL",
   createdAt: new Date("2024-01-10"),
   updatedAt: new Date("2024-01-10"),
   userId: "user-uuid-1",
@@ -103,7 +102,7 @@ describe("CategoryController", () => {
         ownerId: "group-uuid-1",
       };
       categoryServiceMock.createCategory.mockResolvedValue(
-        makeMockCategory({ name: "Transport", scope: "GROUP" }),
+        makeMockCategory({ name: "Transport" }),
       );
 
       await controller.createCategory(dto);
@@ -116,7 +115,11 @@ describe("CategoryController", () => {
 
   describe("updateCategory", () => {
     it("should update and return the category", async () => {
-      const dto: Partial<CreateCategoryDto> = { name: "Transport" };
+      const dto: CreateCategoryDto = {
+        name: "Transport",
+        description: "Transport expenses",
+        ownerId: "user-uuid-1",
+      };
       const updated = makeMockCategory({ name: "Transport" });
       categoryServiceMock.updateCategory.mockResolvedValue(updated);
 
@@ -130,7 +133,11 @@ describe("CategoryController", () => {
     });
 
     it("should forward the categoryId correctly", async () => {
-      const dto: Partial<CreateCategoryDto> = { description: "Updated desc" };
+      const dto: CreateCategoryDto = {
+        name: "Transport",
+        description: "Updated desc",
+        ownerId: "user-uuid-1",
+      };
       categoryServiceMock.updateCategory.mockResolvedValue(makeMockCategory());
 
       await controller.updateCategory("uuid-99", dto);

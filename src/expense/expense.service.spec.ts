@@ -27,7 +27,7 @@ type PrismaExpenseMock = {
 
 type PrismaCategoryMock = {
   findUnique: jest.Mock<
-    Promise<Pick<Category, "scope"> | null>,
+    Promise<Category | null>,
     [{ where: { id: string }; select: { scope: true } }]
   >;
 };
@@ -105,7 +105,7 @@ describe("ExpenseService", () => {
 
     prismaCategory = {
       findUnique: jest.fn<
-        Promise<Pick<Category, "scope"> | null>,
+        Promise<Category | null>,
         [{ where: { id: string }; select: { scope: true } }]
       >(),
     };
@@ -306,9 +306,6 @@ describe("ExpenseService", () => {
       };
       const created = makeMockExpense({ splitStrategy: SplitStrategy.EQUAL });
       prismaExpense.create.mockResolvedValue(created);
-      prismaCategory.findUnique.mockResolvedValue({
-        scope: "GROUP",
-      });
       prismaExpenseParticipant.createMany.mockResolvedValue({ count: 1 });
 
       const result = await service.createExpense(dto, "user-1");
@@ -349,10 +346,6 @@ describe("ExpenseService", () => {
         ],
       };
 
-      prismaCategory.findUnique.mockResolvedValue({
-        scope: "GROUP",
-      });
-
       await expect(service.createExpense(dto, "user-1")).rejects.toThrow(
         BadRequestException,
       );
@@ -374,9 +367,6 @@ describe("ExpenseService", () => {
         },
       });
       prismaExpense.update.mockResolvedValue(updated);
-      prismaCategory.findUnique.mockResolvedValue({
-        scope: "PERSONAL",
-      });
 
       const result = await service.updateExpenseById("expense-1", updateDto);
 
