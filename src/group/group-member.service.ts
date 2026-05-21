@@ -84,6 +84,40 @@ export class GroupMemberService {
     });
   }
 
+  async joinGroupByInvitationCode(invitationCode: string, userId: string) {
+    const group = await this.prisma.group.findUnique({
+      where: {
+        invitationCode,
+      },
+    });
+
+    if (!group) throw new NotFoundException("Invalid invitation code");
+
+    return await this.addMemberToGroup(group.id, userId, "MEMBER");
+  }
+
+  async changeMemberRole(groupId: string, memberId: string, role: GroupRole) {
+    await this.validateGroupExists(groupId);
+
+    const member = await this.prisma.groupMember.findUnique({
+      where: {
+        groupId_userId: {
+          groupId,
+          userId: memberId,
+        },
+      },
+    });
+
+    if (!member) throw new NotFoundException("Member not found in the group");
+
+    return await this.prisma.groupMember.update({
+      where: {
+        groupId_userId: { groupId, userId: memberId },
+      },
+      data: { role },
+    });
+  }
+
   async validateGroupExists(groupId: string) {
     const group = await this.prisma.group.findUnique({
       where: {
