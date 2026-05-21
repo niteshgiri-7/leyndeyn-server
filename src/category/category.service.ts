@@ -22,80 +22,48 @@ export class CategoryService {
     if (!category) throw new NotFoundException("Category not found");
   }
 
-  buildOwnerFilter(scope: string = "PERSONAL", ownerId: string) {
-    if (!ownerId)
-      throw new BadRequestException("Category scope id is required");
-
-    return scope === "PERSONAL"
-      ? { userId: ownerId }
-      : scope === "FRIENDSHIP"
-        ? { friendShipId: ownerId }
-        : { groupId: ownerId };
-  }
-
-  async createCategory(data: CreateCategoryDto, ownerId: string) {
-    const { name, scope } = data;
-    if (!ownerId && scope !== "PERSONAL")
-      throw new BadRequestException(
-        "Category scope id is required to create a category",
-      );
-
-    const ownerFilter = this.buildOwnerFilter(scope, ownerId);
-
-    const categoryExists = await this.prismaService.category.findFirst({
+  async createCategory(data: CreateCategoryDto) {
+    const { ownerId, name } = data;
+    const exists = await this.prismaService.category.findFirst({
       where: {
         name,
-        scope,
-        ...ownerFilter,
+        OR: [{ groupId: ownerId }, { userID: ownerId }],
       },
     });
 
-    if (categoryExists)
+    if (exists)
       throw new ConflictException(
-        "Category with the same name and scope already exists for the owner",
+        "Category with the same name already exists for the given scope",
       );
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { ownerId: _, ...rest } = data;
-
-    const scopeFilter = this.buildOwnerFilter(scope, ownerId);
-
-    const dataToCreate = { ...rest, ...scopeFilter };
 
     return await this.prismaService.category.create({
-      data: dataToCreate,
+      data,
     });
   }
 
-  async updateCategory(data: Partial<CreateCategoryDto>, categoryId: string) {
+  async updateCategory(data: CreateCategoryDto, categoryId: string) {
     await this.validateCategoryExists(categoryId);
 
-    const { ownerId, ...rest } = data;
+    const { name, ownerId } = data;
 
-    const ownerFilter = this.buildOwnerFilter(data?.scope, ownerId!);
-
-    const category = await this.prismaService.category.findFirst({
+    const exists = await this.prismaService.category.findFirst({
       where: {
-        name: data?.name,
-        scope: data?.scope,
-        ...ownerFilter,
+        id: { not: categoryId },
+        name,
+        OR: [{ groupId: ownerId }, { userId: ownerId }],
       },
     });
-    if (
-      category?.name === data?.name &&
-      category?.scope === data?.scope &&
-      category?.id === categoryId
-    )
-      throw new ConflictException(
-        "Category with the same name and scope already exists for the owner",
-      );
 
-    const categoryToUpdate = { ...rest, ...ownerFilter };
+    if (exists)
+      throw new ConflictException(
+        "Category with the same name already exists for the given scope",
+      );
 
     return await this.prismaService.category.update({
       where: {
         id: categoryId,
       },
-      data: categoryToUpdate,
+      data,
     });
   }
 
@@ -104,6 +72,17 @@ export class CategoryService {
 
     //TODO: if a category has expense then throw bad request
 
+    const expense = await this.prismaService.expense.findFirst({
+      where: {
+        categoryId,
+      },
+    });
+
+    if (expense)
+      throw new BadRequestException(
+        "Cannot delete category with associated expenses",
+      );
+
     await this.prismaService.category.delete({
       where: {
         id: categoryId,
@@ -111,14 +90,12 @@ export class CategoryService {
     });
   }
 
-  async getAllCategories(scope: string, ownerId: string) {
-    const ownerFilter = this.buildOwnerFilter(scope, ownerId);
-    const categoriesByScope = await this.prismaService.category.findMany({
+  async getAllCategories(ownerId: string) {
+    return await this.prismaService.category.findFirst({
       where: {
-        ...ownerFilter,
+        OR: [{ groupId: ownerId }, { userId: ownerId }],
       },
     });
-    return categoriesByScope;
   }
 
   async getCategoryById(categoryId: string, userId: string) {
@@ -128,12 +105,6 @@ export class CategoryService {
 
         OR: [
           { userId },
-
-          {
-            friendShip: {
-              OR: [{ receiverId: userId }, { requesterId: userId }],
-            },
-          },
 
           {
             group: {

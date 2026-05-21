@@ -3,10 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import {
-  CategoryScope,
-  SplitStrategy,
-} from "../../generated/prisma/client/enums";
+import { SplitStrategy } from "../../generated/prisma/client/enums";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   CreateExpenseDto,
@@ -72,7 +69,6 @@ export class ExpenseService {
         category: {
           include: {
             group: true,
-            friendShip: true,
           },
         },
       },
@@ -85,28 +81,6 @@ export class ExpenseService {
         category: {
           scope: "GROUP",
           groupId,
-        },
-        createdAt: {
-          gte: dateRange?.startDate,
-          lte: dateRange?.endDate,
-        },
-      },
-      include: {
-        category: true,
-        spentBy: true,
-      },
-    });
-  }
-
-  async getExpensesByFriendShipId(
-    friendShipId: string,
-    dateRange?: DateRangeDto,
-  ) {
-    return await this.prisma.expense.findMany({
-      where: {
-        category: {
-          scope: "FRIENDSHIP",
-          friendShipId,
         },
         createdAt: {
           gte: dateRange?.startDate,
@@ -134,12 +108,17 @@ export class ExpenseService {
 
   async createExpense(data: CreateExpenseDto, spentById: string) {
     return await this.prisma.$transaction(async (prisma) => {
-      if (data?.scope !== CategoryScope.PERSONAL && !data?.splitStrategy)
+      const chosenSplitStrategy = data.splitStrategy ?? SplitStrategy.NONE;
+
+      if (!data?.splitStrategy)
         throw new BadRequestException(
           "Split strategy is required for non personal expenses",
         );
 
-      const chosenSplitStrategy = data.splitStrategy ?? SplitStrategy.NONE;
+      if (!data?.participants || !data?.participants?.length)
+        throw new BadRequestException(
+          "Participants are required for non-personal expenses",
+        );
 
       const expense = await prisma.expense.create({
         data: {
@@ -150,15 +129,6 @@ export class ExpenseService {
           splitStrategy: chosenSplitStrategy,
         },
       });
-
-      await this.validateCategoryScope(data.categoryId, data.scope);
-
-      if (data?.scope === "PERSONAL") return expense;
-
-      if (!data?.participants || !data?.participants?.length)
-        throw new BadRequestException(
-          "Participants are required for non-personal expenses",
-        );
 
       const participants = this.resolveParticipantsForExpense({
         participants: data.participants,
@@ -220,32 +190,11 @@ export class ExpenseService {
     return participants;
   }
 
-  async validateCategoryScope(categoryId: string, scope: CategoryScope) {
-    const category = await this.prisma.category.findUnique({
-      where: {
-        id: categoryId,
-      },
-      select: {
-        scope: true,
-      },
-    });
-
-    if (category?.scope !== scope)
-      throw new BadRequestException("Invalid category or category scope");
-  }
-
   async updateExpenseById(expenseId: string, data: UpdateExpenseDto) {
     return await this.prisma.$transaction(async (prisma) => {
       const existingExpense = await prisma.expense.findUnique({
         where: {
           id: expenseId,
-        },
-        select: {
-          category: {
-            select: {
-              scope: true,
-            },
-          },
         },
       });
 
@@ -262,11 +211,6 @@ export class ExpenseService {
           splitStrategy: data?.splitStrategy,
         },
       });
-
-      await this.validateCategoryScope(
-        data.categoryId,
-        existingExpense.category.scope,
-      );
 
       if (!data?.participants || !data?.participants?.length)
         return updatedExpense;

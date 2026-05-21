@@ -2,7 +2,6 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { CategoryController } from "./category.controller";
 import { CategoryService } from "./category.service";
 import { CreateCategoryDto } from "./dto/create-category.dto";
-import { CategoryScope } from "../../generated/prisma/client/enums";
 import { AuthGuard } from "../auth/guards/jwt-auth.guard";
 import { Category } from "../../generated/prisma/client/client";
 import type { JwtPayload } from "../auth/jwt-payload.type";
@@ -14,11 +13,10 @@ const makeMockCategory = (overrides: Partial<Category> = {}): Category => ({
   id: "uuid-1",
   name: "Food",
   description: "Food expenses",
-  scope: CategoryScope.PERSONAL,
+  scope: "PERSONAL",
   createdAt: new Date("2024-01-10"),
   updatedAt: new Date("2024-01-10"),
   userId: "user-uuid-1",
-  friendShipId: null,
   groupId: null,
   ...overrides,
 });
@@ -67,67 +65,16 @@ describe("CategoryController", () => {
   // ─── getAllCategories ───────────────────────────────────────────────────────
 
   describe("getAllCategories", () => {
-    it("should return all categories for given scope and ownerId", async () => {
+    it("should return categories for owner", async () => {
       const categories = [makeMockCategory()];
-      categoryServiceMock.getAllCategories.mockResolvedValue(categories);
+      categoryServiceMock.getAllCategories.mockResolvedValue(categories[0]);
 
-      const result = await controller.getAllCategories(
-        mockUser,
-        CategoryScope.PERSONAL,
+      const result = await controller.getAllCategories("user-uuid-1");
+
+      expect(categoryServiceMock.getAllCategories).toHaveBeenCalledWith(
         "user-uuid-1",
       );
-
-      expect(categoryServiceMock.getAllCategories).toHaveBeenCalledWith(
-        CategoryScope.PERSONAL,
-        mockUser.id,
-      );
-      expect(result).toEqual(categories);
-    });
-
-    it("should return categories for FRIENDSHIP scope", async () => {
-      const categories = [
-        makeMockCategory({
-          scope: CategoryScope.FRIENDSHIP,
-          friendShipId: "friendship-uuid-1",
-          userId: null,
-        }),
-      ];
-      categoryServiceMock.getAllCategories.mockResolvedValue(categories);
-
-      const result = await controller.getAllCategories(
-        mockUser,
-        CategoryScope.FRIENDSHIP,
-        "friendship-uuid-1",
-      );
-
-      expect(categoryServiceMock.getAllCategories).toHaveBeenCalledWith(
-        CategoryScope.FRIENDSHIP,
-        "friendship-uuid-1",
-      );
-      expect(result).toEqual(categories);
-    });
-
-    it("should return categories for GROUP scope", async () => {
-      const categories = [
-        makeMockCategory({
-          scope: CategoryScope.GROUP,
-          groupId: "group-uuid-1",
-          userId: null,
-        }),
-      ];
-      categoryServiceMock.getAllCategories.mockResolvedValue(categories);
-
-      const result = await controller.getAllCategories(
-        mockUser,
-        CategoryScope.GROUP,
-        "group-uuid-1",
-      );
-
-      expect(categoryServiceMock.getAllCategories).toHaveBeenCalledWith(
-        CategoryScope.GROUP,
-        "group-uuid-1",
-      );
-      expect(result).toEqual(categories);
+      expect(result).toEqual(categories[0]);
     });
   });
 
@@ -138,17 +85,17 @@ describe("CategoryController", () => {
       const dto: CreateCategoryDto = {
         name: "Food",
         description: "Food expenses",
-        scope: CategoryScope.PERSONAL,
+        scope: "PERSONAL",
         ownerId: "user-uuid-1",
       };
       const created = makeMockCategory();
       categoryServiceMock.createCategory.mockResolvedValue(created);
 
-      const result = await controller.createCategory(mockUser, dto);
+      const result = await controller.createCategory(dto);
 
       expect(categoryServiceMock.createCategory).toHaveBeenCalledWith(
         dto,
-        mockUser.id,
+        "user-uuid-1",
       );
       expect(result).toEqual(created);
     });
@@ -157,14 +104,14 @@ describe("CategoryController", () => {
       const dto: CreateCategoryDto = {
         name: "Transport",
         description: "Transport expenses",
-        scope: CategoryScope.GROUP,
+        scope: "GROUP",
         ownerId: "group-uuid-1",
       };
       categoryServiceMock.createCategory.mockResolvedValue(
-        makeMockCategory({ name: "Transport", scope: CategoryScope.GROUP }),
+        makeMockCategory({ name: "Transport", scope: "GROUP" }),
       );
 
-      await controller.createCategory(mockUser, dto);
+      await controller.createCategory(dto);
 
       expect(categoryServiceMock.createCategory).toHaveBeenCalledWith(
         dto,

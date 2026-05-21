@@ -7,14 +7,6 @@ export const mockPrismaService = () => ({
     update: jest.fn(),
     delete: jest.fn(),
   },
-  friend: {
-    findUnique: jest.fn(),
-    findFirst: jest.fn(),
-    findMany: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-  },
   account: {
     findUnique: jest.fn(),
     findFirst: jest.fn(),

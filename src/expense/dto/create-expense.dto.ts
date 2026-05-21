@@ -8,10 +8,7 @@ import {
   Min,
   ValidateNested,
 } from "class-validator";
-import {
-  CategoryScope as ExpenseScope,
-  SplitStrategy,
-} from "../../../generated/prisma/client/enums";
+import { SplitStrategy } from "../../../generated/prisma/client/enums";
 
 export class ExpenseParticipantDto {
   @IsString()
@@ -45,10 +42,6 @@ export class CreateExpenseDto {
   @IsEnum(SplitStrategy)
   @IsOptional()
   splitStrategy?: SplitStrategy;
-
-  @IsNotEmpty()
-  @IsEnum(ExpenseScope)
-  scope!: ExpenseScope;
 
   @IsOptional()
   @ValidateNested({ each: true })

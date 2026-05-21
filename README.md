@@ -16,14 +16,6 @@ Backend service for the Leyndeyn app built with NestJS and Prisma.
 - Fetch all users
 - Fetch user by ID
 
-### Friends
-
-- Send friend request
-- Cancel or reject friend request
-- Accept friend request
-- List all friends for a user
-- List received friend requests by status
-
 ### Groups
 
 - Create group
@@ -45,7 +37,7 @@ Backend service for the Leyndeyn app built with NestJS and Prisma.
 - Update category
 - Delete category
 - Get category by ID with access checks
-- List categories by scope (PERSONAL, FRIENDSHIP, GROUP)
+- List categories by scope (PERSONAL, GROUP)
 
 ### Budgets
 
@@ -65,7 +57,6 @@ Backend service for the Leyndeyn app built with NestJS and Prisma.
 - List expenses by category
 - List personal expenses
 - List group expenses
-- List friendship expenses
 - List all expenses for a user
 - Optional date range filtering for expense queries
 

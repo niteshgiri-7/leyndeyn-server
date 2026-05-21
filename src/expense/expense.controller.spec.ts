@@ -23,10 +23,6 @@ type ExpenseServiceMock = {
     Promise<Expense[]>,
     [string, DateRangeDto | undefined]
   >;
-  getExpensesByFriendShipId: jest.Mock<
-    Promise<Expense[]>,
-    [string, DateRangeDto | undefined]
-  >;
   updateExpenseById: jest.Mock<
     Promise<Expense>,
     [string, Partial<CreateExpenseDto>]
@@ -75,10 +71,6 @@ describe("ExpenseController", () => {
         [string, DateRangeDto | undefined]
       >(),
       getExpensesByGroupId: jest.fn<
-        Promise<Expense[]>,
-        [string, DateRangeDto | undefined]
-      >(),
-      getExpensesByFriendShipId: jest.fn<
         Promise<Expense[]>,
         [string, DateRangeDto | undefined]
       >(),
@@ -167,19 +159,6 @@ describe("ExpenseController", () => {
     expect(result).toEqual(expenses);
     expect(expenseService.getExpensesByGroupId).toHaveBeenCalledWith(
       "group-1",
-      undefined,
-    );
-  });
-
-  it("gets expenses by friendship id", async () => {
-    const expenses = [makeMockExpense()];
-    expenseService.getExpensesByFriendShipId.mockResolvedValue(expenses);
-
-    const result = await controller.getExpensesByFriendShipId("friendship-1");
-
-    expect(result).toEqual(expenses);
-    expect(expenseService.getExpensesByFriendShipId).toHaveBeenCalledWith(
-      "friendship-1",
       undefined,
     );
   });

@@ -3,12 +3,10 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { PrismaService } from "../prisma/prisma.service";
-import {
-  GroupCreateInput,
-  GroupUpdateInput,
-} from "../../generated/prisma/client/models";
 import { GroupRole } from "../../generated/prisma/client/enums";
+import { GroupUpdateInput } from "../../generated/prisma/client/models";
+import { PrismaService } from "../prisma/prisma.service";
+import { CreateGroupDto } from "./dto/create-group.dto";
 
 @Injectable()
 export class GroupService {
@@ -22,11 +20,20 @@ export class GroupService {
     });
     if (!group) throw new NotFoundException("Group not found");
   }
+  generateRandomInvitationCode(length: number = 8): string {
+    const chars =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let result = "";
+    for (let i = 0; i < length; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  }
 
-  async createGroup(userId: string, data: GroupCreateInput) {
+  async createGroup(userId: string, data: CreateGroupDto) {
     const exists = await this.prisma.group.findFirst({
       where: {
-        name: data?.name,
+        name: data.name,
         members: {
           some: {
             userId,
@@ -41,22 +48,50 @@ export class GroupService {
         "Group with this name and your role as admin already exists",
       );
 
-    const group = await this.prisma.group.create({
+    // Resolve participant by email if provided
+    let participantId: string | null = null;
+
+    if (data.participantEmail) {
+      const participant = await this.prisma.user.findUnique({
+        where: { email: data.participantEmail },
+        select: { id: true },
+      });
+
+      if (!participant)
+        throw new NotFoundException(
+          `No user found with email: ${data.participantEmail}`,
+        );
+
+      if (participant.id === userId)
+        throw new BadRequestException(
+          "You cannot add yourself as a participant",
+        );
+
+      participantId = participant.id;
+    }
+
+    const invitationCode = this.generateRandomInvitationCode();
+
+    return this.prisma.group.create({
       data: {
-        ...data,
+        name: data.name,
+        description: data.description,
+        allowMembersToInvite: data.allowMembersToInvite,
+        allowMembersToManageCategory: data.allowMembersToManageCategory,
+        invitationCode,
         members: {
-          create: {
-            user: {
-              connect: {
-                id: userId,
-              },
-            },
-            role: GroupRole?.ADMIN,
+          createMany: {
+            data: [
+              { userId, role: GroupRole.ADMIN },
+              // Only include participant entry if email was resolved
+              ...(participantId
+                ? [{ userId: participantId, role: GroupRole.MEMBER }]
+                : []),
+            ],
           },
         },
       },
     });
-    return group;
   }
 
   async findGroupById(id: string) {

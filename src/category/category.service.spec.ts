@@ -1,12 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from "@nestjs/common";
+import { ConflictException, NotFoundException } from "@nestjs/common";
 import { CategoryService } from "./category.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { CategoryScope } from "../../generated/prisma/client/enums";
 import { Category } from "../../generated/prisma/client/client";
 import { CreateCategoryDto } from "./dto/create-category.dto";
 
@@ -16,11 +11,10 @@ const makeMockCategory = (overrides: Partial<Category> = {}): Category => ({
   id: "uuid-1",
   name: "Food",
   description: "Food expenses",
-  scope: CategoryScope.PERSONAL,
+  scope: "PERSONAL",
   createdAt: new Date("2024-01-10"),
   updatedAt: new Date("2024-01-10"),
   userId: "user-uuid-1",
-  friendShipId: null,
   groupId: null,
   ...overrides,
 });
@@ -76,49 +70,14 @@ describe("CategoryService", () => {
     });
   });
 
-  // ─── buildOwnerFilter ─────────────────────────────────────────────────────
-
-  describe("buildOwnerFilter", () => {
-    it("should return userId filter for PERSONAL scope", () => {
-      const filter = service.buildOwnerFilter(
-        CategoryScope.PERSONAL,
-        "user-uuid-1",
-      );
-      expect(filter).toEqual({ userId: "user-uuid-1" });
-    });
-
-    it("should return friendShipId filter for FRIENDSHIP scope", () => {
-      const filter = service.buildOwnerFilter(
-        CategoryScope.FRIENDSHIP,
-        "friendship-uuid-1",
-      );
-      expect(filter).toEqual({ friendShipId: "friendship-uuid-1" });
-    });
-
-    it("should return groupId filter for GROUP scope", () => {
-      const filter = service.buildOwnerFilter(
-        CategoryScope.GROUP,
-        "group-uuid-1",
-      );
-      expect(filter).toEqual({ groupId: "group-uuid-1" });
-    });
-
-    it("should throw BadRequestException if ownerId is not provided", () => {
-      expect(() =>
-        service.buildOwnerFilter(CategoryScope.PERSONAL, ""),
-      ).toThrow(BadRequestException);
-    });
-  });
-
   // ─── createCategory ───────────────────────────────────────────────────────
 
   describe("createCategory", () => {
-    const createInput = {
+    const createInput: CreateCategoryDto = {
       name: "Food",
       description: "Food expenses",
-      scope: CategoryScope.PERSONAL,
       ownerId: "user-uuid-1",
-    } as unknown as CreateCategoryDto;
+    };
 
     it("should create and return a category", async () => {
       const expected = makeMockCategory();
@@ -130,27 +89,16 @@ describe("CategoryService", () => {
       expect(prismaMock.category.findFirst).toHaveBeenCalledWith({
         where: {
           name: createInput.name,
-          scope: createInput.scope,
-          userId: createInput.ownerId,
+          OR: [
+            { groupId: createInput.ownerId },
+            { userId: createInput.ownerId },
+          ],
         },
       });
-      const expectedCreateData = {
-        name: createInput.name,
-        description: createInput.description,
-        scope: createInput.scope,
-        userId: createInput.ownerId,
-      };
-
       expect(prismaMock.category.create).toHaveBeenCalledWith({
-        data: expectedCreateData,
+        data: createInput,
       });
       expect(result).toEqual(expected);
-    });
-
-    it("should throw BadRequestException if ownerId is not provided", async () => {
-      await expect(service.createCategory(createInput, "")).rejects.toThrow(
-        BadRequestException,
-      );
     });
 
     it("should throw ConflictException if category already exists for the owner", async () => {
@@ -174,7 +122,6 @@ describe("CategoryService", () => {
 
       const updateData = {
         name: "Transport",
-        scope: CategoryScope.PERSONAL,
         ownerId: "user-uuid-1",
       };
 
@@ -184,8 +131,7 @@ describe("CategoryService", () => {
         where: { id: "uuid-1" },
         data: {
           name: "Transport",
-          scope: CategoryScope.PERSONAL,
-          userId: "user-uuid-1",
+          ownerId: "user-uuid-1",
         },
       });
       expect(result).toEqual(updated);
@@ -226,67 +172,16 @@ describe("CategoryService", () => {
   // ─── getAllCategories ─────────────────────────────────────────────────────
 
   describe("getAllCategories", () => {
-    it("should return all categories for PERSONAL scope", async () => {
+    it("should return categories by owner id", async () => {
       const categories = [makeMockCategory()];
-      prismaMock.category.findMany.mockResolvedValue(categories);
+      prismaMock.category.findFirst.mockResolvedValue(categories[0]);
 
-      const result = await service.getAllCategories(
-        CategoryScope.PERSONAL,
-        "user-uuid-1",
-      );
+      const result = await service.getAllCategories("user-uuid-1");
 
-      expect(prismaMock.category.findMany).toHaveBeenCalledWith({
-        where: { userId: "user-uuid-1" },
+      expect(prismaMock.category.findFirst).toHaveBeenCalledWith({
+        where: { OR: [{ groupId: "user-uuid-1" }, { userId: "user-uuid-1" }] },
       });
-      expect(result).toEqual(categories);
-    });
-
-    it("should return all categories for FRIENDSHIP scope", async () => {
-      const categories = [
-        makeMockCategory({
-          scope: CategoryScope.FRIENDSHIP,
-          friendShipId: "friendship-uuid-1",
-          userId: null,
-        }),
-      ];
-      prismaMock.category.findMany.mockResolvedValue(categories);
-
-      const result = await service.getAllCategories(
-        CategoryScope.FRIENDSHIP,
-        "friendship-uuid-1",
-      );
-
-      expect(prismaMock.category.findMany).toHaveBeenCalledWith({
-        where: { friendShipId: "friendship-uuid-1" },
-      });
-      expect(result).toEqual(categories);
-    });
-
-    it("should return all categories for GROUP scope", async () => {
-      const categories = [
-        makeMockCategory({
-          scope: CategoryScope.GROUP,
-          groupId: "group-uuid-1",
-          userId: null,
-        }),
-      ];
-      prismaMock.category.findMany.mockResolvedValue(categories);
-
-      const result = await service.getAllCategories(
-        CategoryScope.GROUP,
-        "group-uuid-1",
-      );
-
-      expect(prismaMock.category.findMany).toHaveBeenCalledWith({
-        where: { groupId: "group-uuid-1" },
-      });
-      expect(result).toEqual(categories);
-    });
-
-    it("should throw BadRequestException if ownerId is missing", async () => {
-      await expect(
-        service.getAllCategories(CategoryScope.PERSONAL, ""),
-      ).rejects.toThrow(BadRequestException);
+      expect(result).toEqual(categories[0]);
     });
   });
 
@@ -304,14 +199,6 @@ describe("CategoryService", () => {
           id: "uuid-1",
           OR: [
             { userId: "user-uuid-1" },
-            {
-              friendShip: {
-                OR: [
-                  { receiverId: "user-uuid-1" },
-                  { requesterId: "user-uuid-1" },
-                ],
-              },
-            },
             {
               group: {
                 members: {

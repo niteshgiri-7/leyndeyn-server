@@ -96,40 +96,6 @@ export class ExpenseController {
     );
   }
 
-  //Friendship
-
-  @CheckAccess("friendship")
-  @Post("/friendShip/:friendShipId")
-  async createFriendShipExpense(
-    @CurrentUser() user: JwtPayload,
-    @Param("friendShipId", ParseUUIDPipe) _friendShipId: string,
-    @Body() data: CreateExpenseDto,
-  ) {
-    return await this.expenseService.createExpense(data, user.id);
-  }
-
-  @CheckAccess("friendship")
-  @Put(":expenseId/friendShip/:friendShipId")
-  async updateFriendShipExpense(
-    @Param("expenseId", ParseUUIDPipe) expenseId: string,
-    @Param("friendShipId", ParseUUIDPipe) _friendShipId: string,
-    @Body() data: UpdateExpenseDto,
-  ) {
-    return await this.expenseService.updateExpenseById(expenseId, data);
-  }
-
-  @CheckAccess("friendship")
-  @Get("/friendShip/:friendShipId")
-  async getExpensesByFriendShipId(
-    @Param("friendShipId", ParseUUIDPipe) friendShipId: string,
-    @Query() dateRange?: DateRangeDto,
-  ) {
-    return await this.expenseService.getExpensesByFriendShipId(
-      friendShipId,
-      dateRange,
-    );
-  }
-
   //generic
 
   @CheckAccess("expense")

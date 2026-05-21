@@ -5,14 +5,11 @@ import { PrismaService } from "../prisma/prisma.service";
 import { CreateExpenseDto } from "./dto/create-expense.dto";
 import { DateRangeDto } from "./dto/date-range.dto";
 import type { Expense, Category } from "../../generated/prisma/client/client";
-import {
-  CategoryScope,
-  SplitStrategy,
-} from "../../generated/prisma/client/enums";
+import { SplitStrategy } from "../../generated/prisma/client/enums";
 import { SplitStrategyFactory } from "./split/split-strategy.factory";
 import { UpdateExpenseDto } from "./dto/update-expense.dto";
 
-type ExpenseFindUniqueResult = Expense | { category: { scope: CategoryScope } };
+type ExpenseFindUniqueResult = Expense | { category: { scope: string } };
 
 type PrismaExpenseMock = {
   findUnique: jest.Mock<Promise<ExpenseFindUniqueResult | null>, [unknown]>;
@@ -248,18 +245,6 @@ describe("ExpenseService", () => {
     });
   });
 
-  describe("getExpensesByFriendShipId", () => {
-    it("should return expenses for a friendship", async () => {
-      const expenses = [makeMockExpense()];
-      prismaExpense.findMany.mockResolvedValue(expenses);
-
-      const result = await service.getExpensesByFriendShipId("friendship-1");
-
-      expect(prismaExpense.findMany).toHaveBeenCalled();
-      expect(result).toEqual(expenses);
-    });
-  });
-
   describe("getExpenseByCategoryId", () => {
     it("should return expenses for a category", async () => {
       const expenses = [makeMockExpense()];
@@ -283,12 +268,11 @@ describe("ExpenseService", () => {
         amount: 100,
         description: "Coffee",
         categoryId: "category-1",
-        scope: CategoryScope.PERSONAL,
       };
       const created = makeMockExpense();
       prismaExpense.create.mockResolvedValue(created);
       prismaCategory.findUnique.mockResolvedValue({
-        scope: CategoryScope.PERSONAL,
+        scope: "PERSONAL",
       });
 
       const result = await service.createExpense(dto, "user-1");
@@ -310,7 +294,6 @@ describe("ExpenseService", () => {
         amount: 100,
         description: "Dinner",
         categoryId: "category-1",
-        scope: CategoryScope.GROUP,
         splitStrategy: SplitStrategy.EQUAL,
         participants: [
           {
@@ -321,7 +304,7 @@ describe("ExpenseService", () => {
       const created = makeMockExpense({ splitStrategy: SplitStrategy.EQUAL });
       prismaExpense.create.mockResolvedValue(created);
       prismaCategory.findUnique.mockResolvedValue({
-        scope: CategoryScope.GROUP,
+        scope: "GROUP",
       });
       prismaExpenseParticipant.createMany.mockResolvedValue({ count: 1 });
 
@@ -356,13 +339,16 @@ describe("ExpenseService", () => {
         amount: 100,
         description: "Dinner",
         categoryId: "category-1",
-        scope: CategoryScope.GROUP,
         participants: [
           {
             participantId: "user-2",
           },
         ],
       };
+
+      prismaCategory.findUnique.mockResolvedValue({
+        scope: "GROUP",
+      });
 
       await expect(service.createExpense(dto, "user-1")).rejects.toThrow(
         BadRequestException,
@@ -381,12 +367,12 @@ describe("ExpenseService", () => {
       const updated = makeMockExpense({ amount: 150 });
       prismaExpense.findUnique.mockResolvedValue({
         category: {
-          scope: CategoryScope.PERSONAL,
+          scope: "PERSONAL",
         },
       });
       prismaExpense.update.mockResolvedValue(updated);
       prismaCategory.findUnique.mockResolvedValue({
-        scope: CategoryScope.PERSONAL,
+        scope: "PERSONAL",
       });
 
       const result = await service.updateExpenseById("expense-1", updateDto);

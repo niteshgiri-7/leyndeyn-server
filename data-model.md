@@ -4,20 +4,19 @@ This document reviews the Prisma schema data model for the application, highligh
 
 ## Overview
 
-The schema represents a finance and expense-sharing application (similar to Splitwise), supporting personal tracking, peer-to-peer (Friend) sharing, and Group sharing. The database of choice is PostgreSQL.
+The schema represents a finance and expense-sharing application (similar to Splitwise), supporting personal tracking and Group sharing. The database of choice is PostgreSQL.
 
 ## Core Entities and Relationships
 
 1.  **Users & Authentication (`user.prisma`, `account.prisma`)**
     - Standard user model with authentication capabilities via OAuth (`Account`) or traditional `passwordHash`.
     - **Strengths**: Clean separation of OAuth profiles from the core `User` profile. `cuid()` is used for IDs which is standard and safe.
-2.  **Social connections (`friend.prisma`, `group.prisma`, `group-member.prisma`)**
-    - **Friends**: Tracks peer-to-peer relationships between users via `requesterId` and `receiverId`. Proper `@@unique` constraints prevent duplicate friendships.
+2.  **Social connections (`group.prisma`, `group-member.prisma`)**
     - **Groups**: Users can form groups with metadata like `allowMembersToInvite`. Associated via `GroupMember` which includes roles (MEMBER, ADMIN).
     - **Strengths**: Explicit many-to-many relationship for Groups handles joining dates and roles perfectly.
 
 3.  **Classification (`category.prisma`, `budget.prisma`)**
-    - **Categories**: Used to group expenses. They're scoped via `CategoryScope` (PERSONAL, FRIENDSHIP, GROUP).
+    - **Categories**: Used to group expenses. They're scoped via `scope` (PERSONAL, GROUP).
     - **Budgets**: Set against a `Category` with a reset strategy (DAILY, WEEKLY, MONTHLY).
     - **Strengths**: Using scopes for Categories is an elegant way to reuse the taxonomy engine across isolated contexts.
 
@@ -33,12 +32,4 @@ The schema represents a finance and expense-sharing application (similar to Spli
 
 ### 1. The `ExpenseSettlement` Model is overly constrained
 
-Currently, in `expense-settlement.prisma`, both `groupId` and `friendShipId` are mandatory:
-
-```prisma
-groupId String
-group Group @relation(fields:[groupId],references: [id])
-
-friendShipId String
-friendShip Friend @relation(fields:[friendShipId],references:[id])
-```
+The model should align to group-only settlement contexts.

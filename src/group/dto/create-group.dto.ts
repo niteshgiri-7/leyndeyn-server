@@ -1,4 +1,11 @@
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from "class-validator";
+import {
+  IsBoolean,
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from "class-validator";
 
 export class CreateGroupDto {
   @IsNotEmpty()
@@ -10,4 +17,16 @@ export class CreateGroupDto {
   @IsString()
   @MaxLength(255)
   description?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  allowMembersToInvite?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  allowMembersToManageCategory?: boolean;
+
+  @IsOptional()
+  @IsEmail()
+  participantEmail?: string;
 }

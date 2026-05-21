@@ -11,7 +11,7 @@ export class UserController {
     return await this.userService.findAllUsers();
   }
 
-  //TODO: add validation(must be self or friend or same group member) before returning the user details
+  //TODO: add validation(must be self or same group member) before returning the user details
   @Get(":id")
   async getUserById(@Param("id", ParseUUIDPipe) id: string) {
     return await this.userService.findUserById(id);

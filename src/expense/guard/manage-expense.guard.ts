@@ -8,7 +8,7 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { Reflector } from "@nestjs/core";
 import { Request } from "express";
 
-export type ResourceType = "group" | "friendship" | "expense";
+export type ResourceType = "group" | "expense";
 
 export const RESOURCE_KEY = "resource";
 
@@ -31,7 +31,6 @@ export class ManageExpenseGuard implements CanActivate {
 
     const expenseId = request.params?.expenseId as string;
     const groupId = request.params?.groupId as string;
-    const friendShipId = request.params?.friendShipId as string;
 
     if (!userId) throw new ForbiddenException("User is not authenticated");
 
@@ -39,11 +38,6 @@ export class ManageExpenseGuard implements CanActivate {
       case "group": {
         if (!groupId) throw new ForbiddenException("Group ID is missing");
         return await this.checkGroupMemberShip(userId, groupId);
-      }
-      case "friendship": {
-        if (!friendShipId)
-          throw new ForbiddenException("Friendship ID is missing");
-        return await this.checkFriendShip(userId, friendShipId);
       }
       case "expense": {
         if (!expenseId) throw new ForbiddenException("Expense ID is missing");
@@ -68,22 +62,6 @@ export class ManageExpenseGuard implements CanActivate {
 
     if (!member)
       throw new ForbiddenException("User is not a member of the group");
-
-    return true;
-  }
-
-  private async checkFriendShip(
-    userId: string,
-    friendShipId: string,
-  ): Promise<boolean> {
-    const friendShip = await this.prisma.friend.findFirst({
-      where: {
-        id: friendShipId,
-        OR: [{ receiverId: userId }, { requesterId: userId }],
-      },
-    });
-    if (!friendShip)
-      throw new ForbiddenException("User is not a part of the friendship");
 
     return true;
   }

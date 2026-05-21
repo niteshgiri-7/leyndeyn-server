@@ -22,7 +22,4 @@ model ExpenseSettlement{
 
     groupId String?
     group Group? @relation(fields:[groupId],references: [id])
-
-    friendShipId String?
-    friendShip Friend? @relation(fields:[friendShipId],references:[id])
 }
