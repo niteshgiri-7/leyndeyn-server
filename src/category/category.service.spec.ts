@@ -11,7 +11,6 @@ const makeMockCategory = (overrides: Partial<Category> = {}): Category => ({
   id: "uuid-1",
   name: "Food",
   description: "Food expenses",
-  scope: "PERSONAL",
   createdAt: new Date("2024-01-10"),
   updatedAt: new Date("2024-01-10"),
   userId: "user-uuid-1",
@@ -84,7 +83,7 @@ describe("CategoryService", () => {
       prismaMock.category.findFirst.mockResolvedValue(null);
       prismaMock.category.create.mockResolvedValue(expected);
 
-      const result = await service.createCategory(createInput, "user-uuid-1");
+      const result = await service.createCategory(createInput);
 
       expect(prismaMock.category.findFirst).toHaveBeenCalledWith({
         where: {
@@ -104,9 +103,9 @@ describe("CategoryService", () => {
     it("should throw ConflictException if category already exists for the owner", async () => {
       prismaMock.category.findFirst.mockResolvedValue(makeMockCategory());
 
-      await expect(
-        service.createCategory(createInput, "user-uuid-1"),
-      ).rejects.toThrow(ConflictException);
+      await expect(service.createCategory(createInput)).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 
@@ -120,12 +119,16 @@ describe("CategoryService", () => {
       prismaMock.category.findFirst.mockResolvedValue(null);
       prismaMock.category.update.mockResolvedValue(updated);
 
-      const updateData = {
+      const updateData: CreateCategoryDto = {
         name: "Transport",
+        description: "Transport expenses",
         ownerId: "user-uuid-1",
       };
 
-      const result = await service.updateCategory(updateData, "uuid-1");
+      const result = await service.updateCategory(
+        updateData,
+        "category-uuid-1",
+      );
 
       expect(prismaMock.category.update).toHaveBeenCalledWith({
         where: { id: "uuid-1" },
@@ -141,7 +144,14 @@ describe("CategoryService", () => {
       prismaMock.category.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.updateCategory({ name: "Transport" }, "non-existent-uuid"),
+        service.updateCategory(
+          {
+            name: "Transport",
+            description: "asdfasdf",
+            ownerId: "user-uuid-1",
+          },
+          "non-existent-uuid",
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });
