@@ -85,7 +85,6 @@ describe("CategoryController", () => {
       const dto: CreateCategoryDto = {
         name: "Food",
         description: "Food expenses",
-        scope: "PERSONAL",
         ownerId: "user-uuid-1",
       };
       const created = makeMockCategory();
@@ -93,10 +92,7 @@ describe("CategoryController", () => {
 
       const result = await controller.createCategory(dto);
 
-      expect(categoryServiceMock.createCategory).toHaveBeenCalledWith(
-        dto,
-        "user-uuid-1",
-      );
+      expect(categoryServiceMock.createCategory).toHaveBeenCalledWith(dto);
       expect(result).toEqual(created);
     });
 
@@ -104,7 +100,6 @@ describe("CategoryController", () => {
       const dto: CreateCategoryDto = {
         name: "Transport",
         description: "Transport expenses",
-        scope: "GROUP",
         ownerId: "group-uuid-1",
       };
       categoryServiceMock.createCategory.mockResolvedValue(
@@ -113,10 +108,7 @@ describe("CategoryController", () => {
 
       await controller.createCategory(dto);
 
-      expect(categoryServiceMock.createCategory).toHaveBeenCalledWith(
-        dto,
-        "group-uuid-1",
-      );
+      expect(categoryServiceMock.createCategory).toHaveBeenCalledWith(dto);
     });
   });
 

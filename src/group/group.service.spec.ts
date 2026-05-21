@@ -58,10 +58,12 @@ describe("GroupService", () => {
       expect(prismaGroup.create).toHaveBeenCalledWith({
         data: {
           ...data,
+          allowMembersToInvite: undefined,
+          allowMembersToManageCategory: undefined,
+          invitationCode: "asdfasdf",
           members: {
-            create: {
-              user: { connect: { id: userId } },
-              role: "ADMIN",
+            createMany: {
+              data: [{ userId, role: "ADMIN" }],
             },
           },
         },

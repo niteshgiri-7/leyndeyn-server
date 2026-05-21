@@ -27,7 +27,7 @@ export class CategoryService {
     const exists = await this.prismaService.category.findFirst({
       where: {
         name,
-        OR: [{ groupId: ownerId }, { userID: ownerId }],
+        OR: [{ groupId: ownerId }, { userId: ownerId }],
       },
     });
 

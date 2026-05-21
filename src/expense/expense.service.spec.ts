@@ -268,13 +268,16 @@ describe("ExpenseService", () => {
         amount: 100,
         description: "Coffee",
         categoryId: "category-1",
+        splitStrategy: SplitStrategy.NONE,
+        participants: [
+          {
+            participantId: "user-1",
+          },
+        ],
       };
       const created = makeMockExpense();
       prismaExpense.create.mockResolvedValue(created);
-      prismaCategory.findUnique.mockResolvedValue({
-        scope: "PERSONAL",
-      });
-
+      prismaExpenseParticipant.createMany.mockResolvedValue({ count: 1 });
       const result = await service.createExpense(dto, "user-1");
 
       expect(prismaExpense.create).toHaveBeenCalledWith({
@@ -286,7 +289,7 @@ describe("ExpenseService", () => {
           splitStrategy: SplitStrategy.NONE,
         },
       });
-      expect(result).toEqual(created);
+      expect(result).toEqual({ count: 1 });
     });
 
     it("should create a non-personal expense with participants", async () => {

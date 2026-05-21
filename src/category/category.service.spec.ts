@@ -29,6 +29,9 @@ const prismaMock = {
     update: jest.fn(),
     delete: jest.fn(),
   },
+  expense: {
+    findFirst: jest.fn(),
+  },
 };
 
 // ─── Test Suite ──────────────────────────────────────────────────────────────
@@ -131,11 +134,8 @@ describe("CategoryService", () => {
       );
 
       expect(prismaMock.category.update).toHaveBeenCalledWith({
-        where: { id: "uuid-1" },
-        data: {
-          name: "Transport",
-          ownerId: "user-uuid-1",
-        },
+        where: { id: "category-uuid-1" },
+        data: updateData,
       });
       expect(result).toEqual(updated);
     });
@@ -162,6 +162,7 @@ describe("CategoryService", () => {
     it("should delete the category", async () => {
       prismaMock.category.findUnique.mockResolvedValue(makeMockCategory());
       prismaMock.category.delete.mockResolvedValue(undefined);
+      prismaMock.expense.findFirst.mockResolvedValue(null);
 
       await expect(service.deleteCategory("uuid-1")).resolves.not.toThrow();
 
