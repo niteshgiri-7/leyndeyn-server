@@ -30,9 +30,15 @@ export class CategoryController {
     return await this.categoryService.getAllCategories(ownerId);
   }
 
-  @Post()
-  async createCategory(@Body() data: CreateCategoryDto) {
-    return await this.categoryService.createCategory(data);
+  @ALLOW_NON_ADMIN()
+  @Post("/personal")
+  async createPersonalCategory(@Body() data: CreateCategoryDto) {
+    return await this.categoryService.createPersonalCategory(data);
+  }
+
+  @Post("/group")
+  async createGroupCategory(@Body() data: CreateCategoryDto) {
+    return await this.categoryService.createGroupCategory(data);
   }
 
   @Put(":categoryId")

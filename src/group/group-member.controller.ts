@@ -59,7 +59,6 @@ export class GroupMemberController {
     return await this.groupMemberService.getAllGroupMembers(groupId);
   }
 
-  //TODO: api to change the role of a member in the group
   @Post("/:memberId/role")
   async changeMemberRole(
     @Param("groupId") groupId: string,

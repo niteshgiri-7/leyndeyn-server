@@ -22,19 +22,34 @@ export class CategoryService {
     if (!category) throw new NotFoundException("Category not found");
   }
 
-  async createCategory(data: CreateCategoryDto) {
+  async createPersonalCategory(data: CreateCategoryDto) {
     const { ownerId, name } = data;
     const exists = await this.prismaService.category.findFirst({
       where: {
         name,
-        OR: [{ groupId: ownerId }, { userId: ownerId }],
+        userId: ownerId,
       },
     });
 
     if (exists)
-      throw new ConflictException(
-        "Category with the same name already exists for the given scope",
-      );
+      throw new ConflictException("Category with the same name already exists");
+
+    return await this.prismaService.category.create({
+      data,
+    });
+  }
+
+  async createGroupCategory(data: CreateCategoryDto) {
+    const { ownerId, name } = data;
+    const exists = await this.prismaService.category.findFirst({
+      where: {
+        name,
+        groupId: ownerId,
+      },
+    });
+
+    if (exists)
+      throw new ConflictException("Category with the same name already exists");
 
     return await this.prismaService.category.create({
       data,

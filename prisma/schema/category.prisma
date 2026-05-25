@@ -13,4 +13,7 @@ model Category{
 
     budgets Budget[]
     expenses Expense[]
+
+    @@unique([name,userId])
+    @@unique([name,groupId])
 }

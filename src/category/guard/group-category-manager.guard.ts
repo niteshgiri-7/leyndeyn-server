@@ -1,13 +1,14 @@
 import {
+  BadRequestException,
   CanActivate,
   ExecutionContext,
   ForbiddenException,
   Injectable,
 } from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
 import { Request } from "express";
 import { PrismaService } from "../../prisma/prisma.service";
 import { CreateCategoryDto } from "../dto/create-category.dto";
-import { Reflector } from "@nestjs/core";
 
 @Injectable()
 export class GroupCategoryManagerGuard implements CanActivate {
@@ -31,6 +32,8 @@ export class GroupCategoryManagerGuard implements CanActivate {
     const userId = req.user?.id;
 
     const ownerId = req.body?.ownerId || req.query?.ownerId;
+
+    if (!ownerId) throw new BadRequestException("OwnerId is required");
 
     const group = await this.prisma.group.findUnique({
       where: {
