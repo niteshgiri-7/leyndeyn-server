@@ -60,7 +60,7 @@ describe("GroupService", () => {
           ...data,
           allowMembersToInvite: undefined,
           allowMembersToManageCategory: undefined,
-          invitationCode: "asdfasdf",
+          invitationCode: "1233jjJJ",
           members: {
             createMany: {
               data: [{ userId, role: "ADMIN" }],

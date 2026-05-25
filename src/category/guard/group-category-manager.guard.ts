@@ -23,37 +23,97 @@ export class GroupCategoryManagerGuard implements CanActivate {
       context.getHandler(),
     );
 
-    if (canProceed) return true;
-
     const req = context
       .switchToHttp()
-      .getRequest<Request<object, object, CreateCategoryDto>>();
+      .getRequest<
+        Request<{ categoryId?: string }, object, CreateCategoryDto>
+      >();
 
     const userId = req.user?.id;
+    if (!userId) throw new ForbiddenException("User not authenticated");
+
+    const categoryId = req.params?.categoryId;
+    let groupId: string | null = null;
+    let allowMembersToManageCategory: boolean | null = null;
+
+    if (categoryId) {
+      const category = await this.prisma.category.findUnique({
+        where: {
+          id: categoryId,
+        },
+        select: {
+          groupId: true,
+          userId: true,
+        },
+      });
+
+      if (!category) throw new ForbiddenException("Category not found");
+
+      if (!category.groupId) return true;
+
+      groupId = category.groupId;
+    }
 
     const ownerId = req.body?.ownerId || req.query?.ownerId;
 
-    if (!ownerId) throw new BadRequestException("OwnerId is required");
+    if (!groupId) {
+      if (!ownerId) throw new BadRequestException("OwnerId is required");
 
-    const group = await this.prisma.group.findUnique({
+      const group = await this.prisma.group.findUnique({
+        where: {
+          id: ownerId as string,
+        },
+        select: {
+          id: true,
+          allowMembersToManageCategory: true,
+        },
+      });
+
+      if (!group) {
+        if (ownerId === userId) return true;
+
+        throw new ForbiddenException("Group not found");
+      }
+
+      groupId = group.id;
+      allowMembersToManageCategory = group.allowMembersToManageCategory;
+    }
+
+    if (!groupId) return true;
+
+    const membership = await this.prisma.groupMember.findUnique({
       where: {
-        id: ownerId as string,
+        groupId_userId: {
+          groupId,
+          userId,
+        },
+      },
+      select: {
+        role: true,
       },
     });
 
-    if (!group) throw new ForbiddenException("Group not found");
+    if (!membership) throw new ForbiddenException("Not a group member");
 
-    if (group?.allowMembersToManageCategory) return true;
+    if (req.method === "GET" || canProceed) return true;
 
-    const isGroupAdmin = await this.prisma.groupMember.findFirst({
-      where: {
-        userId,
-        groupId: ownerId as string,
-        role: "ADMIN",
-      },
-    });
+    if (allowMembersToManageCategory === null) {
+      const group = await this.prisma.group.findUnique({
+        where: {
+          id: groupId,
+        },
+        select: {
+          allowMembersToManageCategory: true,
+        },
+      });
 
-    if (isGroupAdmin) return true;
+      allowMembersToManageCategory =
+        group?.allowMembersToManageCategory ?? null;
+    }
+
+    if (allowMembersToManageCategory) return true;
+
+    if (membership.role === "ADMIN") return true;
 
     throw new ForbiddenException("Admin access required");
   }

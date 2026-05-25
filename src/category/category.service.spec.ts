@@ -1,5 +1,9 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { ConflictException, NotFoundException } from "@nestjs/common";
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
 import { CategoryService } from "./category.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { Category } from "../../generated/prisma/client/client";
@@ -28,6 +32,12 @@ const prismaMock = {
     create: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
+  },
+  groupMember: {
+    findUnique: jest.fn(),
+  },
+  group: {
+    findUnique: jest.fn(),
   },
   expense: {
     findFirst: jest.fn(),
@@ -72,9 +82,9 @@ describe("CategoryService", () => {
     });
   });
 
-  // ─── createCategory ───────────────────────────────────────────────────────
+  // ─── createPersonalCategory ───────────────────────────────────────────────
 
-  describe("createCategory", () => {
+  describe("createPersonalCategory", () => {
     const createInput: CreateCategoryDto = {
       name: "Food",
       description: "Food expenses",
@@ -86,15 +96,15 @@ describe("CategoryService", () => {
       prismaMock.category.findFirst.mockResolvedValue(null);
       prismaMock.category.create.mockResolvedValue(expected);
 
-      const result = await service.createCategory(createInput);
+      const result = await service.createPersonalCategory(
+        createInput,
+        "user-uuid-1",
+      );
 
       expect(prismaMock.category.findFirst).toHaveBeenCalledWith({
         where: {
           name: createInput.name,
-          OR: [
-            { groupId: createInput.ownerId },
-            { userId: createInput.ownerId },
-          ],
+          userId: createInput.ownerId,
         },
       });
       expect(prismaMock.category.create).toHaveBeenCalledWith({
@@ -106,9 +116,66 @@ describe("CategoryService", () => {
     it("should throw ConflictException if category already exists for the owner", async () => {
       prismaMock.category.findFirst.mockResolvedValue(makeMockCategory());
 
-      await expect(service.createCategory(createInput)).rejects.toThrow(
-        ConflictException,
+      await expect(
+        service.createPersonalCategory(createInput, "user-uuid-1"),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it("should throw ForbiddenException if ownerId mismatches user", async () => {
+      await expect(
+        service.createPersonalCategory(createInput, "user-uuid-2"),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  // ─── createGroupCategory ──────────────────────────────────────────────────
+
+  describe("createGroupCategory", () => {
+    const createInput: CreateCategoryDto = {
+      name: "Food",
+      description: "Food expenses",
+      ownerId: "group-uuid-1",
+    };
+
+    it("should create and return a category for admin", async () => {
+      const expected = makeMockCategory({ groupId: "group-uuid-1" });
+      prismaMock.groupMember.findUnique.mockResolvedValue({ role: "ADMIN" });
+      prismaMock.group.findUnique.mockResolvedValue({
+        allowMembersToManageCategory: false,
+      });
+      prismaMock.category.findFirst.mockResolvedValue(null);
+      prismaMock.category.create.mockResolvedValue(expected);
+
+      const result = await service.createGroupCategory(
+        createInput,
+        "user-uuid-1",
       );
+
+      expect(prismaMock.category.create).toHaveBeenCalledWith({
+        data: createInput,
+      });
+      expect(result).toEqual(expected);
+    });
+
+    it("should allow member when group flag is enabled", async () => {
+      prismaMock.groupMember.findUnique.mockResolvedValue({ role: "MEMBER" });
+      prismaMock.group.findUnique.mockResolvedValue({
+        allowMembersToManageCategory: true,
+      });
+      prismaMock.category.findFirst.mockResolvedValue(null);
+      prismaMock.category.create.mockResolvedValue(makeMockCategory());
+
+      await expect(
+        service.createGroupCategory(createInput, "user-uuid-1"),
+      ).resolves.not.toThrow();
+    });
+
+    it("should throw ForbiddenException for non-member", async () => {
+      prismaMock.groupMember.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.createGroupCategory(createInput, "user-uuid-1"),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -131,6 +198,7 @@ describe("CategoryService", () => {
       const result = await service.updateCategory(
         updateData,
         "category-uuid-1",
+        "user-uuid-1",
       );
 
       expect(prismaMock.category.update).toHaveBeenCalledWith({
@@ -151,8 +219,28 @@ describe("CategoryService", () => {
             ownerId: "user-uuid-1",
           },
           "non-existent-uuid",
+          "user-uuid-1",
         ),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it("should throw ForbiddenException for non-member group update", async () => {
+      prismaMock.category.findUnique.mockResolvedValue(
+        makeMockCategory({ groupId: "group-uuid-1", userId: null }),
+      );
+      prismaMock.groupMember.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.updateCategory(
+          {
+            name: "Transport",
+            description: "asdfasdf",
+            ownerId: "group-uuid-1",
+          },
+          "category-uuid-1",
+          "user-uuid-1",
+        ),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -164,7 +252,9 @@ describe("CategoryService", () => {
       prismaMock.category.delete.mockResolvedValue(undefined);
       prismaMock.expense.findFirst.mockResolvedValue(null);
 
-      await expect(service.deleteCategory("uuid-1")).resolves.not.toThrow();
+      await expect(
+        service.deleteCategory("uuid-1", "user-uuid-1"),
+      ).resolves.not.toThrow();
 
       expect(prismaMock.category.delete).toHaveBeenCalledWith({
         where: { id: "uuid-1" },
@@ -174,9 +264,20 @@ describe("CategoryService", () => {
     it("should throw NotFoundException if category does not exist", async () => {
       prismaMock.category.findUnique.mockResolvedValue(null);
 
-      await expect(service.deleteCategory("non-existent-uuid")).rejects.toThrow(
-        NotFoundException,
+      await expect(
+        service.deleteCategory("non-existent-uuid", "user-uuid-1"),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("should throw ForbiddenException for non-member group delete", async () => {
+      prismaMock.category.findUnique.mockResolvedValue(
+        makeMockCategory({ groupId: "group-uuid-1", userId: null }),
       );
+      prismaMock.groupMember.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.deleteCategory("uuid-1", "user-uuid-1"),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -185,14 +286,25 @@ describe("CategoryService", () => {
   describe("getAllCategories", () => {
     it("should return categories by owner id", async () => {
       const categories = [makeMockCategory()];
-      prismaMock.category.findFirst.mockResolvedValue(categories[0]);
+      prismaMock.category.findMany.mockResolvedValue(categories);
 
-      const result = await service.getAllCategories("user-uuid-1");
+      const result = await service.getAllCategories(
+        "user-uuid-1",
+        "user-uuid-1",
+      );
 
-      expect(prismaMock.category.findFirst).toHaveBeenCalledWith({
-        where: { OR: [{ groupId: "user-uuid-1" }, { userId: "user-uuid-1" }] },
+      expect(prismaMock.category.findMany).toHaveBeenCalledWith({
+        where: { userId: "user-uuid-1" },
       });
-      expect(result).toEqual(categories[0]);
+      expect(result).toEqual(categories);
+    });
+
+    it("should throw ForbiddenException for non-member group list", async () => {
+      prismaMock.groupMember.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.getAllCategories("group-uuid-1", "user-uuid-1"),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 

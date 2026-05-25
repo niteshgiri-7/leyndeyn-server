@@ -26,32 +26,49 @@ export class CategoryController {
   @ALLOW_NON_ADMIN()
   @Get("/all")
   //ownerId could be userId or groupId based on the scope
-  async getAllCategories(@Query("ownerId") ownerId: string) {
-    return await this.categoryService.getAllCategories(ownerId);
+  async getAllCategories(
+    @Query("ownerId") ownerId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return await this.categoryService.getAllCategories(ownerId, user?.id);
   }
 
   @ALLOW_NON_ADMIN()
   @Post("/personal")
-  async createPersonalCategory(@Body() data: CreateCategoryDto) {
-    return await this.categoryService.createPersonalCategory(data);
+  async createPersonalCategory(
+    @Body() data: CreateCategoryDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return await this.categoryService.createPersonalCategory(data, user?.id);
   }
 
   @Post("/group")
-  async createGroupCategory(@Body() data: CreateCategoryDto) {
-    return await this.categoryService.createGroupCategory(data);
+  async createGroupCategory(
+    @Body() data: CreateCategoryDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return await this.categoryService.createGroupCategory(data, user?.id);
   }
 
   @Put(":categoryId")
   async updateCategory(
     @Param("categoryId", ParseUUIDPipe) categoryId: string,
     @Body() data: CreateCategoryDto,
+    @CurrentUser() user: JwtPayload,
   ) {
-    return await this.categoryService.updateCategory(data, categoryId);
+    return await this.categoryService.updateCategory(
+      data,
+      categoryId,
+      user?.id,
+    );
   }
 
   @Delete(":categoryId")
-  async deleteCategory(@Param("categoryId", ParseUUIDPipe) categoryId: string) {
-    return await this.categoryService.deleteCategory(categoryId);
+  async deleteCategory(
+    @Param("categoryId", ParseUUIDPipe) categoryId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return await this.categoryService.deleteCategory(categoryId, user?.id);
   }
 
   @ALLOW_NON_ADMIN()
