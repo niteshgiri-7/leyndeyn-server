@@ -1,7 +1,12 @@
-import { BadRequestException, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { PrismaService } from "../prisma/prisma.service";
 import { GroupService } from "./group.service";
+import { GroupRole } from "../../generated/prisma/client/enums";
 
 type PrismaGroupMock = {
   create: jest.Mock;
@@ -11,9 +16,15 @@ type PrismaGroupMock = {
   delete: jest.Mock;
 };
 
+type PrismaGroupMemberMock = {
+  findFirst: jest.Mock;
+  create: jest.Mock;
+};
+
 describe("GroupService", () => {
   let service: GroupService;
   let prismaGroup: PrismaGroupMock;
+  let prismaGroupMember: PrismaGroupMemberMock;
 
   beforeEach(async () => {
     prismaGroup = {
@@ -24,8 +35,14 @@ describe("GroupService", () => {
       delete: jest.fn(),
     };
 
+    prismaGroupMember = {
+      findFirst: jest.fn(),
+      create: jest.fn(),
+    };
+
     const prismaMock = {
       group: prismaGroup,
+      groupMember: prismaGroupMember,
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -161,6 +178,81 @@ describe("GroupService", () => {
       expect(result).toEqual(group);
       expect(prismaGroup.delete).toHaveBeenCalledWith({
         where: { id: "group-1" },
+      });
+    });
+  });
+
+  describe("joinGroupViaInvitationCode", () => {
+    const invitationCode = "abc123";
+    const userId = "user-1";
+    const group = { id: "group-1", name: "Test Group" };
+
+    it("should throw NotFoundException when invitation code is invalid", async () => {
+      prismaGroup.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.joinGroupViaInvitationCode(invitationCode, userId),
+      ).rejects.toThrow(new NotFoundException("Invalid invitation code"));
+
+      expect(prismaGroup.findUnique).toHaveBeenCalledWith({
+        where: { invitationCode },
+      });
+      expect(prismaGroupMember.findFirst).not.toHaveBeenCalled();
+      expect(prismaGroupMember.create).not.toHaveBeenCalled();
+    });
+
+    it("should throw ConflictException when user is already a member", async () => {
+      prismaGroup.findUnique.mockResolvedValue(group);
+      prismaGroupMember.findFirst.mockResolvedValue({
+        id: "membership-1",
+        groupId: group.id,
+        userId,
+      });
+
+      await expect(
+        service.joinGroupViaInvitationCode(invitationCode, userId),
+      ).rejects.toThrow(
+        new ConflictException("You are already a member of this group"),
+      );
+
+      expect(prismaGroup.findUnique).toHaveBeenCalledWith({
+        where: { invitationCode },
+      });
+      expect(prismaGroupMember.findFirst).toHaveBeenCalledWith({
+        where: { groupId: group.id, userId },
+      });
+      expect(prismaGroupMember.create).not.toHaveBeenCalled();
+    });
+
+    it("should create a GroupMember entry when invitation is valid and user is not a member", async () => {
+      const createdMember = {
+        id: "membership-1",
+        groupId: group.id,
+        userId,
+        role: GroupRole.MEMBER,
+      };
+      prismaGroup.findUnique.mockResolvedValue(group);
+      prismaGroupMember.findFirst.mockResolvedValue(null);
+      prismaGroupMember.create.mockResolvedValue(createdMember);
+
+      const result = await service.joinGroupViaInvitationCode(
+        invitationCode,
+        userId,
+      );
+
+      expect(result).toEqual(createdMember);
+      expect(prismaGroup.findUnique).toHaveBeenCalledWith({
+        where: { invitationCode },
+      });
+      expect(prismaGroupMember.findFirst).toHaveBeenCalledWith({
+        where: { groupId: group.id, userId },
+      });
+      expect(prismaGroupMember.create).toHaveBeenCalledWith({
+        data: {
+          groupId: group.id,
+          userId,
+          role: GroupRole.MEMBER,
+        },
       });
     });
   });

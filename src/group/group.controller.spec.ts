@@ -18,6 +18,7 @@ describe("GroupController", () => {
     createGroup: jest.Mock;
     updateGroupById: jest.Mock;
     deleteGroupById: jest.Mock;
+    joinGroupViaInvitationCode: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -26,6 +27,7 @@ describe("GroupController", () => {
       createGroup: jest.fn(),
       updateGroupById: jest.fn(),
       deleteGroupById: jest.fn(),
+      joinGroupViaInvitationCode: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -93,5 +95,19 @@ describe("GroupController", () => {
 
     expect(result).toEqual(group);
     expect(groupService.deleteGroupById).toHaveBeenCalledWith("group-1");
+  });
+
+  it("joins group via invitation code", async () => {
+    const dto = { invitationCode: "abc123" };
+    const member = { id: "member-1", groupId: "group-1", userId: "user-1" };
+    groupService.joinGroupViaInvitationCode.mockResolvedValue(member);
+
+    const result = await controller.joinGroupViaInvitationCode(dto, mockUser);
+
+    expect(result).toEqual(member);
+    expect(groupService.joinGroupViaInvitationCode).toHaveBeenCalledWith(
+      "abc123",
+      mockUser.id,
+    );
   });
 });

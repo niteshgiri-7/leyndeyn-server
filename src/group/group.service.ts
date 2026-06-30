@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -153,6 +154,34 @@ export class GroupService {
             userId,
           },
         },
+      },
+    });
+  }
+
+  async joinGroupViaInvitationCode(invitationCode: string, userId: string) {
+    const group = await this.prisma.group.findUnique({
+      where: {
+        invitationCode,
+      },
+    });
+
+    if (!group) throw new NotFoundException("Invalid invitation code");
+
+    const existingMember = await this.prisma.groupMember.findFirst({
+      where: {
+        groupId: group.id,
+        userId,
+      },
+    });
+
+    if (existingMember)
+      throw new ConflictException("You are already a member of this group");
+
+    return await this.prisma.groupMember.create({
+      data: {
+        groupId: group.id,
+        userId,
+        role: GroupRole.MEMBER,
       },
     });
   }

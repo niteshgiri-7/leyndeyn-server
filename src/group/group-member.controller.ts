@@ -7,15 +7,12 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
+import { GroupRole } from "../../generated/prisma/client/enums";
 import { AuthGuard } from "../auth/guards/jwt-auth.guard";
 import { ALLOW_NON_ADMIN } from "./decorator/allow-non-admin";
 import { CreateGroupMemberDto } from "./dto/create-group-member.dto";
 import { GroupMemberService } from "./group-member.service";
 import { GroupAdminGuard } from "./guard/group-admin.guard";
-import { JoinGroupViaInvitationDto } from "./dto/join-group-via-invitation.dto";
-import { CurrentUser } from "../auth/decorator/current-user.decorator";
-import type { JwtPayload } from "../auth/jwt-payload.type";
-import { GroupRole } from "../../generated/prisma/client/enums";
 
 @UseGuards(AuthGuard, GroupAdminGuard)
 @Controller("group/:groupId/members")
@@ -31,17 +28,6 @@ export class GroupMemberController {
       groupId,
       data.userId,
       data.role,
-    );
-  }
-
-  @Post()
-  async joinGroupByInvitationCode(
-    @CurrentUser() currentUser: JwtPayload,
-    @Body() data: JoinGroupViaInvitationDto,
-  ) {
-    return await this.groupMemberService.joinGroupByInvitationCode(
-      data.invitationCode,
-      currentUser.id,
     );
   }
 
