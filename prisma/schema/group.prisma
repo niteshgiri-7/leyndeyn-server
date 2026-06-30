@@ -12,6 +12,7 @@ model Group{
 
     members GroupMember[]
     category Category[]
+    expenses Expense[]
     
     settleMents ExpenseSettlement[]
 }

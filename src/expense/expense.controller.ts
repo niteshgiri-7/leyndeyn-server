@@ -58,10 +58,10 @@ export class ExpenseController {
   @Post("/group/:groupId")
   async createGroupExpense(
     @CurrentUser() user: JwtPayload,
-    @Param("groupId", ParseUUIDPipe) _groupId: string,
+    @Param("groupId", ParseUUIDPipe) groupId: string,
     @Body() data: CreateExpenseDto,
   ) {
-    return await this.expenseService.createExpense(data, user.id);
+    return await this.expenseService.createExpense(data, user.id, groupId);
   }
 
   @CheckAccess("group")

@@ -41,9 +41,7 @@ export class ExpenseService {
     return await this.prisma.expense.findMany({
       where: {
         spentById: userId,
-        category: {
-          userId,
-        },
+        groupId: null,
         createdAt: {
           gte: dateRange?.startDate,
           lte: dateRange?.endDate,
@@ -65,11 +63,8 @@ export class ExpenseService {
         },
       },
       include: {
-        category: {
-          include: {
-            group: true,
-          },
-        },
+        category: true,
+        group: true,
       },
     });
   }
@@ -77,9 +72,7 @@ export class ExpenseService {
   async getExpensesByGroupId(groupId: string, dateRange?: DateRangeDto) {
     return await this.prisma.expense.findMany({
       where: {
-        category: {
-          groupId,
-        },
+        groupId,
         createdAt: {
           gte: dateRange?.startDate,
           lte: dateRange?.endDate,
@@ -104,7 +97,11 @@ export class ExpenseService {
     });
   }
 
-  async createExpense(data: CreateExpenseDto, spentById: string) {
+  async createExpense(
+    data: CreateExpenseDto,
+    spentById: string,
+    groupId?: string,
+  ) {
     return await this.prisma.$transaction(async (prisma) => {
       const chosenSplitStrategy = data.splitStrategy ?? SplitStrategy.NONE;
 
@@ -118,6 +115,18 @@ export class ExpenseService {
           "Participants are required for non-personal expenses",
         );
 
+      if (groupId) {
+        const category = await prisma.category.findUnique({
+          where: { id: data.categoryId },
+          select: { groupId: true },
+        });
+
+        if (category?.groupId !== groupId)
+          throw new BadRequestException(
+            "Category does not belong to the specified group",
+          );
+      }
+
       const expense = await prisma.expense.create({
         data: {
           amount: data.amount,
@@ -125,6 +134,7 @@ export class ExpenseService {
           categoryId: data.categoryId,
           spentById,
           splitStrategy: chosenSplitStrategy,
+          ...(groupId && { groupId }),
         },
       });
 

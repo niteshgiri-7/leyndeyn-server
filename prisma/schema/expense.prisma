@@ -22,5 +22,8 @@ model Expense{
     categoryId String
     category Category @relation(fields: [categoryId], references:[id])
 
+    groupId String?
+    group Group? @relation(fields: [groupId], references: [id])
+
     participants ExpenseParticipant[]
 }
