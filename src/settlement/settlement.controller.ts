@@ -30,8 +30,6 @@ export class SettlementController {
     return await this.settlementService.getSettlementsByGroupId(groupId);
   }
 
-  @Get(":groupId/recent-transactions")
-
   //TODO: send email or notification to "toUserId" that "fromUserId" has settled the expense and the amount has been transferred to their account and ask for review.
   @CheckAccess("group")
   @Post(":groupId/")
@@ -42,6 +40,7 @@ export class SettlementController {
     return await this.settlementService.settleExpense(groupId, data);
   }
 
+  @CheckAccess("group")
   @Get(":groupId/recent-transactions")
   async getRecentSettlementTransactions(
     @Param("groupId", ParseUUIDPipe) groupId: string,
