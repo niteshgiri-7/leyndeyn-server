@@ -39,19 +39,19 @@
 
 ### Groups & Members
 
-| Endpoint                                      | Status                                             |
-| --------------------------------------------- | -------------------------------------------------- |
-| `POST /group`                                 | ✅ Done                                            |
-| `GET /group/all`                              | ✅ Done — lists groups for authenticated user      |
-| `GET /group/:groupId`                         | ✅ Done                                            |
-| `PUT /group/:groupId`                         | ✅ Done (admin only)                               |
-| `DELETE /group/:groupId`                      | ✅ Done (admin only)                               |
-| `GET /group/:groupId/members`                 | ✅ Done                                            |
-| `POST /group/:groupId/members`                | ⚠️ **Route conflict** — see Incomplete section     |
-| `DELETE /group/:groupId/members/:userId`      | ✅ Done (admin only)                               |
-| `POST /group/:groupId/members/:memberId/role` | ✅ Done (admin only)                               |
-| Invitation code generation & join             | ✅ Done (service level, route blocked by conflict) |
-| `GroupAdminGuard` + `@ALLOW_NON_ADMIN()`      | ✅ Done — flexible role‑based access               |
+| Endpoint                                      | Status                                        |
+| --------------------------------------------- | --------------------------------------------- |
+| `POST /group`                                 | ✅ Done                                       |
+| `GET /group/all`                              | ✅ Done — lists groups for authenticated user |
+| `GET /group/:groupId`                         | ✅ Done                                       |
+| `PUT /group/:groupId`                         | ✅ Done (admin only)                          |
+| `DELETE /group/:groupId`                      | ✅ Done (admin only)                          |
+| `GET /group/:groupId/members`                 | ✅ Done                                       |
+| `POST /group/:groupId/members`                | ✅ Done (admin only)                          |
+| `DELETE /group/:groupId/members/:userId`      | ✅ Done (admin only)                          |
+| `POST /group/:groupId/members/:memberId/role` | ✅ Done (admin only)                          |
+| Invitation code generation & join             | ✅ Done — `POST /group/join`                  |
+| `GroupAdminGuard` + `@ALLOW_NON_ADMIN()`      | ✅ Done — flexible role‑based access          |
 
 ### Categories
 
@@ -122,17 +122,6 @@
 ---
 
 ## ❌ Incomplete / Missing Features
-
-### Route Conflict in GroupMemberController — BUG
-
-**File:** `src/group/group-member.controller.ts:25` and `:37`
-
-Two `@Post()` handlers are mapped to the same path `/group/:groupId/members`:
-
-1. `addMemberToGroup()` — expects `{ userId, role }`
-2. `joinGroupByInvitationCode()` — expects `{ invitationCode }`
-
-The second handler is **unreachable**. One of them needs a distinct route (e.g., `POST /group/:groupId/members/join-by-code`).
 
 ### Refresh Token Rotation — NOT STARTED
 
