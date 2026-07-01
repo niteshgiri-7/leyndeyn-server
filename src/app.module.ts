@@ -10,6 +10,7 @@ import { GroupModule } from "./group/group.module";
 import { CategoryModule } from "./category/category.module";
 import { BudgetModule } from "./budget/budget.module";
 import { ExpenseModule } from "./expense/expense.module";
+import { SettlementModule } from "./settlement/settlement.module";
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { ExpenseModule } from "./expense/expense.module";
     CategoryModule,
     BudgetModule,
     ExpenseModule,
+    SettlementModule,
   ],
   controllers: [AppController],
   providers: [AppService],
