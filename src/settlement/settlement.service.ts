@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { CreateExpenseSettlementDto } from "./dto/create-expense-settlement.dto";
 import {
   Balance,
   GroupExpenses,
@@ -10,7 +11,7 @@ import {
 @Injectable()
 export class SettlementService {
   constructor(private readonly prisma: PrismaService) {}
-  async getAllExpensesByGroupId(groupId: string) {
+  private async getAllExpensesByGroupId(groupId: string) {
     const expenses = await this.prisma.expense.findMany({
       where: {
         groupId,
@@ -27,7 +28,7 @@ export class SettlementService {
     return expenses;
   }
 
-  async getAllSettlementsByGroupId(groupId: string) {
+  private async getAllSettlementsByGroupId(groupId: string) {
     const settlements = await this.prisma.expenseSettlement.findMany({
       where: {
         groupId,
@@ -42,7 +43,7 @@ export class SettlementService {
     return settlements;
   }
 
-  calculateBalances(
+  private calculateBalances(
     expenses: GroupExpenses,
     settledExpenses: GroupSettlements,
   ): Map<string, number> {
@@ -79,7 +80,7 @@ export class SettlementService {
     return balances;
   }
 
-  splitBalancesToDebtorAndCreditor(balances: Map<string, number>) {
+  private splitBalancesToDebtorAndCreditor(balances: Map<string, number>) {
     const debtors: Balance[] = [];
     const creditors: Balance[] = [];
 
@@ -102,7 +103,7 @@ export class SettlementService {
     return { debtors, creditors };
   }
 
-  simplifyDebts(debtors: Balance[], creditors: Balance[]) {
+  private simplifyDebts(debtors: Balance[], creditors: Balance[]) {
     const settlements: Settlement[] = [];
 
     let i = 0,
@@ -138,5 +139,18 @@ export class SettlementService {
       this.splitBalancesToDebtorAndCreditor(balances);
 
     return this.simplifyDebts(debtors, creditors);
+  }
+
+  async settleExpense(groupId: string, data: CreateExpenseSettlementDto) {
+    return await this.prisma.expenseSettlement.create({
+      data: {
+        amount: data.amount,
+        description: data.description,
+        status: data.status,
+        groupId,
+        fromUserId: data.fromUserId,
+        toUserId: data.toUserId,
+      },
+    });
   }
 }
