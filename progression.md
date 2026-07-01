@@ -98,6 +98,18 @@
 | `ManageExpenseGuard` + `@CheckAccess()`            | ✅ Done                              |
 | Optional date‑range filtering                      | ✅ Done via `DateRangeDto`           |
 
+### Expense Settlement (Debt Repayment)
+
+| Endpoint                                               | Status                                               |
+| ------------------------------------------------------ | ---------------------------------------------------- |
+| `GET /settlement/group/:groupId`                       | ✅ Done — calculates simplified net debt settlements |
+| `POST /settlement/group/:groupId/`                     | ✅ Done — records a new settlement transaction       |
+| `GET /settlement/group/:groupId/recent-transactions`   | ✅ Done — list recent settlements (opt. filter)      |
+| `POST /settlement/group/:groupId/:settlementId/status` | ✅ Done — update status (receiver only)              |
+| Balance calculation (`calculateBalances`)              | ✅ Done — net balance per user from expenses         |
+| Debt simplification (`simplifyDebts`)                  | ✅ Done — greedy matching debtors → creditors        |
+| Tests for settlements                                  | ✅ Done                                              |
+
 ### Tests
 
 | Area            | Count                                                              |
@@ -110,15 +122,6 @@
 ---
 
 ## ❌ Incomplete / Missing Features
-
-### Expense Settlement (Debt Repayment) — NOT STARTED
-
-The `ExpenseSettlement` model exists in `prisma/schema/expense-settlement.prisma` with fields:
-`amount`, `description`, `status` (PENDING / SETTLED / REJECTED), `fromUserId`, `toUserId`, `groupId`.
-
-- ❌ No `ExpenseSettlementModule`, controller, or service
-- ❌ No endpoints to create, view, accept, or reject settlements
-- ❌ No settlement business logic (balance calculation, netting, etc.)
 
 ### Route Conflict in GroupMemberController — BUG
 
