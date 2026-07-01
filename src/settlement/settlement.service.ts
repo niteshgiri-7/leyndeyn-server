@@ -34,7 +34,7 @@ export class SettlementService {
     return expenses;
   }
 
-  private async getAllSettlementsByGroupId(groupId: string) {
+  private async getSettledExpenses(groupId: string) {
     const settlements = await this.prisma.expenseSettlement.findMany({
       where: {
         groupId,
@@ -136,9 +136,9 @@ export class SettlementService {
     return settlements;
   }
 
-  async getPendingSettlementsByGroupId(groupId: string) {
+  async getSettlementsByGroupId(groupId: string) {
     const expenses = await this.getAllExpensesByGroupId(groupId);
-    const settledExpenses = await this.getAllSettlementsByGroupId(groupId);
+    const settledExpenses = await this.getSettledExpenses(groupId);
     const balances = this.calculateBalances(expenses, settledExpenses);
 
     const { creditors, debtors } =
@@ -194,5 +194,37 @@ export class SettlementService {
     });
 
     return updatedSettlement;
+  }
+
+  async getRecentSettlementTransactions(
+    groupId: string,
+    status?: SettlementStatus,
+    numberOfTransactions: number = 10,
+  ) {
+    const settlements = await this.prisma.expenseSettlement.findMany({
+      where: {
+        groupId,
+        status,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: numberOfTransactions,
+      include: {
+        fromUser: {
+          select: {
+            avatarUrl: true,
+            username: true,
+          },
+        },
+        toUser: {
+          select: {
+            avatarUrl: true,
+            username: true,
+          },
+        },
+      },
+    });
+    return settlements;
   }
 }

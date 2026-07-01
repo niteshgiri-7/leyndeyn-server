@@ -5,7 +5,7 @@ export type GroupExpenses = Awaited<
 >;
 
 export type GroupSettlements = Awaited<
-  ReturnType<SettlementService["getAllSettlementsByGroupId"]>
+  ReturnType<SettlementService["getSettledExpenses"]>
 >;
 
 export type Balance = {

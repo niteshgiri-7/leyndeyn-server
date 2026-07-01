@@ -35,3 +35,8 @@ export class UpdateSettlementStatusDto {
   @IsNotEmpty()
   status!: SettlementStatus;
 }
+
+export class GetSettlementStatusQueryDto {
+  status?: SettlementStatus;
+  numberOfTransactions?: number;
+}
