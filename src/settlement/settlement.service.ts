@@ -1,4 +1,9 @@
-import { Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateExpenseSettlementDto } from "./dto/create-expense-settlement.dto";
 import {
@@ -7,6 +12,7 @@ import {
   GroupSettlements,
   Settlement,
 } from "./type/settlement.type";
+import { SettlementStatus } from "../../generated/prisma/client/enums";
 
 @Injectable()
 export class SettlementService {
@@ -152,5 +158,41 @@ export class SettlementService {
         toUserId: data.toUserId,
       },
     });
+  }
+
+  async updateSettlementStatus(
+    userId: string,
+    groupId: string,
+    settlementId: string,
+    status: SettlementStatus,
+  ) {
+    const settlement = await this.prisma.expenseSettlement.findUnique({
+      where: {
+        id: settlementId,
+        groupId,
+      },
+    });
+
+    if (!settlement) throw new NotFoundException("Settlement not found");
+
+    if (settlement.toUserId !== userId)
+      throw new ForbiddenException(
+        "You are not authorized to update this settlement",
+      );
+
+    if (settlement.status === SettlementStatus.SETTLED)
+      throw new BadRequestException("Can't update already settled settlement");
+
+    const updatedSettlement = await this.prisma.expenseSettlement.update({
+      where: {
+        id: settlementId,
+        groupId,
+      },
+      data: {
+        status,
+      },
+    });
+
+    return updatedSettlement;
   }
 }

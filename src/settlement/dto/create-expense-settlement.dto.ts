@@ -29,3 +29,9 @@ export class CreateExpenseSettlementDto {
   @IsNotEmpty()
   toUserId!: string;
 }
+
+export class UpdateSettlementStatusDto {
+  @IsEnum(SettlementStatus)
+  @IsNotEmpty()
+  status!: SettlementStatus;
+}
