@@ -1,7 +1,12 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
 import { SettlementService } from "./settlement.service";
 import { PrismaService } from "../prisma/prisma.service";
-import type { Balance } from "./type/settlement.type";
+import { SettlementStatus } from "../../generated/prisma/client/enums";
 
 type PrismaExpenseMock = {
   findMany: jest.Mock<Promise<unknown[]>, [unknown]>;
@@ -9,19 +14,34 @@ type PrismaExpenseMock = {
 
 type PrismaExpenseSettlementMock = {
   findMany: jest.Mock<Promise<unknown[]>, [unknown]>;
+  findUnique: jest.Mock<Promise<unknown>, [unknown]>;
+  create: jest.Mock<Promise<unknown>, [unknown]>;
+  update: jest.Mock<Promise<unknown>, [unknown]>;
 };
 
-const makeParticipant = (overrides: Record<string, unknown> = {}) => ({
-  id: "p-1",
-  amount: 50,
-  userId: "user-2",
-  expenseId: "e-1",
+type PrismaServiceMock = {
+  expense: PrismaExpenseMock;
+  expenseSettlement: PrismaExpenseSettlementMock;
+};
+
+const makeMockUser = (overrides: Record<string, unknown> = {}) => ({
+  id: "user-1",
+  email: "user1@test.com",
+  username: "user1",
+  avatarUrl: null,
+  isVerified: true,
   createdAt: new Date("2024-01-01"),
   updatedAt: new Date("2024-01-01"),
   ...overrides,
 });
 
-const makeExpense = (overrides: Record<string, unknown> = {}) => {
+const makeMockParticipant = (overrides: Record<string, unknown> = {}) => ({
+  user: makeMockUser({ id: "user-2", username: "user2" }),
+  amount: 50,
+  ...overrides,
+});
+
+const makeMockExpense = (overrides: Record<string, unknown> = {}) => {
   const spentById = (overrides.spentById as string) ?? "user-1";
   return {
     id: "e-1",
@@ -33,23 +53,24 @@ const makeExpense = (overrides: Record<string, unknown> = {}) => {
     groupId: "g-1",
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
-    participants: [makeParticipant()],
-    spentBy: {
-      id: spentById,
-      email: "user@test.com",
-      username: "user1",
-      avatarUrl: null,
-      isVerified: true,
-    },
+    participants: [makeMockParticipant()],
+    spentBy: makeMockUser({ id: spentById }),
     ...overrides,
   };
 };
 
-const makeSettlement = (overrides: Record<string, unknown> = {}) => ({
+const makeMockSettlement = (overrides: Record<string, unknown> = {}) => ({
+  id: "s-1",
   amount: 25,
+  description: "Payment",
+  status: "SETTLED",
   fromUserId: "user-2",
   toUserId: "user-1",
-  status: "SETTLED",
+  groupId: "g-1",
+  createdAt: new Date("2024-01-02"),
+  updatedAt: new Date("2024-01-02"),
+  fromUser: makeMockUser({ id: "user-2", username: "user2" }),
+  toUser: makeMockUser({ id: "user-1", username: "user1" }),
   ...overrides,
 });
 
@@ -65,6 +86,9 @@ describe("SettlementService", () => {
 
     prismaExpenseSettlement = {
       findMany: jest.fn<Promise<unknown[]>, [unknown]>(),
+      findUnique: jest.fn<Promise<unknown>, [unknown]>(),
+      create: jest.fn<Promise<unknown>, [unknown]>(),
+      update: jest.fn<Promise<unknown>, [unknown]>(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -75,7 +99,7 @@ describe("SettlementService", () => {
           useValue: {
             expense: prismaExpense,
             expenseSettlement: prismaExpenseSettlement,
-          },
+          } satisfies PrismaServiceMock,
         },
       ],
     }).compile();
@@ -89,488 +113,326 @@ describe("SettlementService", () => {
     expect(service).toBeDefined();
   });
 
-  describe("getAllExpensesByGroupId", () => {
-    it("should fetch expenses with participants and spentBy", async () => {
-      const expenses = [makeExpense()];
-      prismaExpense.findMany.mockResolvedValue(expenses);
-
-      const result = await service.getAllExpensesByGroupId("g-1");
-
-      expect(prismaExpense.findMany).toHaveBeenCalledWith({
-        where: { groupId: "g-1" },
-        include: {
-          participants: true,
-          spentBy: { omit: { passwordHash: true } },
-        },
-      });
-      expect(result).toEqual(expenses);
-    });
-
-    it("should return empty array when no expenses exist", async () => {
-      prismaExpense.findMany.mockResolvedValue([]);
-
-      const result = await service.getAllExpensesByGroupId("g-1");
-
-      expect(result).toEqual([]);
-    });
-  });
-
-  describe("getAllSettlementsByGroupId", () => {
-    it("should fetch settlements with selected fields only", async () => {
-      const settlements = [makeSettlement()];
-      prismaExpenseSettlement.findMany.mockResolvedValue(settlements);
-
-      const result = await service.getAllSettlementsByGroupId("g-1");
-
-      expect(prismaExpenseSettlement.findMany).toHaveBeenCalledWith({
-        where: { groupId: "g-1" },
-        select: {
-          amount: true,
-          fromUserId: true,
-          toUserId: true,
-          status: true,
-        },
-      });
-      expect(result).toEqual(settlements);
-    });
-
-    it("should return empty array when no settlements exist", async () => {
-      prismaExpenseSettlement.findMany.mockResolvedValue([]);
-
-      const result = await service.getAllSettlementsByGroupId("g-1");
-
-      expect(result).toEqual([]);
-    });
-  });
-
-  describe("calculateBalances", () => {
-    it("should credit spender and debit participant for a single expense", () => {
-      const expenses = [
-        makeExpense({
-          participants: [makeParticipant({ amount: 50, userId: "user-2" })],
-        }),
-      ];
-
-      const result = service.calculateBalances(expenses as never, []);
-
-      expect(result.get("user-1")).toBe(50);
-      expect(result.get("user-2")).toBe(-50);
-    });
-
-    it("should handle multiple participants correctly", () => {
-      const expenses = [
-        makeExpense({
-          spentById: "user-1",
-          participants: [
-            makeParticipant({ id: "p-1", amount: 25, userId: "user-2" }),
-            makeParticipant({ id: "p-2", amount: 25, userId: "user-3" }),
-          ],
-        }),
-      ];
-
-      const result = service.calculateBalances(expenses as never, []);
-
-      expect(result.get("user-1")).toBe(50);
-      expect(result.get("user-2")).toBe(-25);
-      expect(result.get("user-3")).toBe(-25);
-    });
-
-    it("should handle multiple expenses", () => {
-      const expenses = [
-        makeExpense({
-          id: "e-1",
-          spentById: "user-1",
-          participants: [makeParticipant({ amount: 30, userId: "user-2" })],
-        }),
-        makeExpense({
-          id: "e-2",
-          spentById: "user-2",
-          participants: [makeParticipant({ amount: 20, userId: "user-1" })],
-        }),
-      ];
-
-      const result = service.calculateBalances(expenses as never, []);
-
-      expect(result.get("user-1")).toBe(10);
-      expect(result.get("user-2")).toBe(-10);
-    });
-
-    it("should adjust balances for already-settled expenses", () => {
-      const expenses = [
-        makeExpense({
-          participants: [makeParticipant({ amount: 50, userId: "user-2" })],
-        }),
-      ];
-      const settlements = [makeSettlement({ amount: 20 })];
-
-      const result = service.calculateBalances(
-        expenses as never,
-        settlements as never,
-      );
-
-      expect(result.get("user-1")).toBe(30);
-      expect(result.get("user-2")).toBe(-30);
-    });
-
-    it("should handle fully settled expense (balance becomes zero)", () => {
-      const expenses = [
-        makeExpense({
-          participants: [makeParticipant({ amount: 50, userId: "user-2" })],
-        }),
-      ];
-      const settlements = [makeSettlement({ amount: 50 })];
-
-      const result = service.calculateBalances(
-        expenses as never,
-        settlements as never,
-      );
-
-      expect(result.get("user-1")).toBe(0);
-      expect(result.get("user-2")).toBe(0);
-    });
-
-    it("should return empty map when no expenses or settlements", () => {
-      const result = service.calculateBalances([], []);
-      expect(result.size).toBe(0);
-    });
-
-    it("should handle user being both spender and participant across expenses", () => {
-      const expenses = [
-        makeExpense({
-          id: "e-1",
-          spentById: "user-1",
-          participants: [
-            makeParticipant({ id: "p-1", amount: 40, userId: "user-2" }),
-            makeParticipant({ id: "p-2", amount: 40, userId: "user-3" }),
-          ],
-        }),
-        makeExpense({
-          id: "e-2",
-          spentById: "user-2",
-          participants: [
-            makeParticipant({ id: "p-3", amount: 30, userId: "user-1" }),
-          ],
-        }),
-      ];
-
-      const result = service.calculateBalances(expenses as never, []);
-
-      expect(result.get("user-1")).toBe(50);
-      expect(result.get("user-2")).toBe(-10);
-      expect(result.get("user-3")).toBe(-40);
-    });
-
-    it("should handle multiple settled expenses", () => {
-      const expenses = [
-        makeExpense({
-          participants: [makeParticipant({ amount: 100, userId: "user-2" })],
-        }),
-      ];
-      const settlements = [
-        makeSettlement({ amount: 30 }),
-        makeSettlement({ amount: 30 }),
-      ];
-
-      const result = service.calculateBalances(
-        expenses as never,
-        settlements as never,
-      );
-
-      expect(result.get("user-1")).toBe(40);
-      expect(result.get("user-2")).toBe(-40);
-    });
-  });
-
-  describe("splitBalancesToDebtorAndCreditor", () => {
-    it("should split balances into debtors and creditors", () => {
-      const balances = new Map<string, number>([
-        ["user-1", 100],
-        ["user-2", -50],
-        ["user-3", -30],
-      ]);
-
-      const result = service.splitBalancesToDebtorAndCreditor(balances);
-
-      expect(result.creditors).toEqual([{ userId: "user-1", amount: 100 }]);
-      expect(result.debtors).toEqual([
-        { userId: "user-2", amount: 50 },
-        { userId: "user-3", amount: 30 },
-      ]);
-    });
-
-    it("should convert negative amounts to positive for debtors", () => {
-      const balances = new Map<string, number>([["user-1", -75]]);
-
-      const result = service.splitBalancesToDebtorAndCreditor(balances);
-
-      expect(result.debtors).toEqual([{ userId: "user-1", amount: 75 }]);
-      expect(result.creditors).toEqual([]);
-    });
-
-    it("should sort debtors descending by amount", () => {
-      const balances = new Map<string, number>([
-        ["user-a", -10],
-        ["user-b", -50],
-        ["user-c", -30],
-      ]);
-
-      const result = service.splitBalancesToDebtorAndCreditor(balances);
-
-      expect(result.debtors.map((d) => d.amount)).toEqual([50, 30, 10]);
-      expect(result.debtors.map((d) => d.userId)).toEqual([
-        "user-b",
-        "user-c",
-        "user-a",
-      ]);
-    });
-
-    it("should sort creditors descending by amount", () => {
-      const balances = new Map<string, number>([
-        ["user-a", 30],
-        ["user-b", 100],
-        ["user-c", 10],
-      ]);
-
-      const result = service.splitBalancesToDebtorAndCreditor(balances);
-
-      expect(result.creditors.map((c) => c.amount)).toEqual([100, 30, 10]);
-      expect(result.creditors.map((c) => c.userId)).toEqual([
-        "user-b",
-        "user-a",
-        "user-c",
-      ]);
-    });
-
-    it("should return empty arrays for empty map", () => {
-      const result = service.splitBalancesToDebtorAndCreditor(new Map());
-
-      expect(result.debtors).toEqual([]);
-      expect(result.creditors).toEqual([]);
-    });
-
-    it("should place zero-balance users into creditors", () => {
-      const balances = new Map<string, number>([["user-1", 0]]);
-
-      const result = service.splitBalancesToDebtorAndCreditor(balances);
-
-      expect(result.debtors).toEqual([]);
-      expect(result.creditors).toEqual([{ userId: "user-1", amount: 0 }]);
-    });
-  });
-
-  describe("simplifyDebts", () => {
-    it("should produce a single settlement for one debtor and one creditor", () => {
-      const debtors: Balance[] = [{ userId: "user-2", amount: 50 }];
-      const creditors: Balance[] = [{ userId: "user-1", amount: 50 }];
-
-      const result = service.simplifyDebts(debtors, creditors);
-
-      expect(result).toEqual([{ from: "user-2", to: "user-1", amount: 50 }]);
-    });
-
-    it("should handle multiple debtors paying one creditor", () => {
-      const debtors: Balance[] = [
-        { userId: "user-2", amount: 30 },
-        { userId: "user-3", amount: 20 },
-      ];
-      const creditors: Balance[] = [{ userId: "user-1", amount: 50 }];
-
-      const result = service.simplifyDebts(debtors, creditors);
-
-      expect(result).toEqual([
-        { from: "user-2", to: "user-1", amount: 30 },
-        { from: "user-3", to: "user-1", amount: 20 },
-      ]);
-    });
-
-    it("should handle one debtor paying multiple creditors", () => {
-      const debtors: Balance[] = [{ userId: "user-1", amount: 50 }];
-      const creditors: Balance[] = [
-        { userId: "user-2", amount: 30 },
-        { userId: "user-3", amount: 20 },
-      ];
-
-      const result = service.simplifyDebts(debtors, creditors);
-
-      expect(result).toEqual([
-        { from: "user-1", to: "user-2", amount: 30 },
-        { from: "user-1", to: "user-3", amount: 20 },
-      ]);
-    });
-
-    it("should match exact amounts across multiple pairs", () => {
-      const debtors: Balance[] = [
-        { userId: "user-2", amount: 40 },
-        { userId: "user-3", amount: 60 },
-      ];
-      const creditors: Balance[] = [
-        { userId: "user-1", amount: 40 },
-        { userId: "user-4", amount: 60 },
-      ];
-
-      const result = service.simplifyDebts(debtors, creditors);
-
-      expect(result).toEqual([
-        { from: "user-2", to: "user-1", amount: 40 },
-        { from: "user-3", to: "user-4", amount: 60 },
-      ]);
-    });
-
-    it("should return empty array when both arrays are empty", () => {
-      expect(service.simplifyDebts([], [])).toEqual([]);
-    });
-
-    it("should return empty array when only debtors exist", () => {
-      expect(service.simplifyDebts([{ userId: "u1", amount: 10 }], [])).toEqual(
-        [],
-      );
-    });
-
-    it("should return empty array when only creditors exist", () => {
-      expect(service.simplifyDebts([], [{ userId: "u1", amount: 10 }])).toEqual(
-        [],
-      );
-    });
-
-    it("should handle complex multi-person scenario", () => {
-      const debtors: Balance[] = [
-        { userId: "user-2", amount: 100 },
-        { userId: "user-3", amount: 40 },
-      ];
-      const creditors: Balance[] = [
-        { userId: "user-1", amount: 80 },
-        { userId: "user-4", amount: 60 },
-      ];
-
-      const result = service.simplifyDebts(debtors, creditors);
-
-      expect(result).toEqual([
-        { from: "user-2", to: "user-1", amount: 80 },
-        { from: "user-2", to: "user-4", amount: 20 },
-        { from: "user-3", to: "user-4", amount: 40 },
-      ]);
-    });
-
-    it("should skip near-zero remaining amounts (< 0.01)", () => {
-      const debtors: Balance[] = [{ userId: "user-2", amount: 50.005 }];
-      const creditors: Balance[] = [{ userId: "user-1", amount: 50 }];
-
-      const result = service.simplifyDebts(debtors, creditors);
-
-      expect(result).toEqual([{ from: "user-2", to: "user-1", amount: 50 }]);
-    });
-  });
-
-  describe("getPendingSettlementsByGroupId", () => {
+  describe("getSettlementsByGroupId", () => {
     it("should compute settlements for a simple expense", async () => {
       const expenses = [
-        makeExpense({
-          participants: [makeParticipant({ amount: 50, userId: "user-2" })],
+        makeMockExpense({
+          participants: [makeMockParticipant({ amount: 50 })],
         }),
       ];
       prismaExpense.findMany.mockResolvedValue(expenses);
       prismaExpenseSettlement.findMany.mockResolvedValue([]);
 
-      const result = await service.getPendingSettlementsByGroupId("g-1");
+      const result = await service.getSettlementsByGroupId("g-1");
 
-      expect(result).toEqual([{ from: "user-2", to: "user-1", amount: 50 }]);
+      expect(result).toEqual([
+        {
+          from: { userId: "user-2", username: "", avatarUrl: null },
+          to: { userId: "user-1", username: "", avatarUrl: null },
+          amount: 50,
+        },
+      ]);
+    });
+
+    it("should handle multiple participants", async () => {
+      const expenses = [
+        makeMockExpense({
+          participants: [
+            makeMockParticipant({
+              user: makeMockUser({ id: "user-2" }),
+              amount: 25,
+            }),
+            makeMockParticipant({
+              user: makeMockUser({ id: "user-3" }),
+              amount: 25,
+            }),
+          ],
+        }),
+      ];
+      prismaExpense.findMany.mockResolvedValue(expenses);
+      prismaExpenseSettlement.findMany.mockResolvedValue([]);
+
+      const result = await service.getSettlementsByGroupId("g-1");
+
+      expect(result).toEqual([
+        {
+          from: { userId: "user-2", username: "", avatarUrl: null },
+          to: { userId: "user-1", username: "", avatarUrl: null },
+          amount: 25,
+        },
+        {
+          from: { userId: "user-3", username: "", avatarUrl: null },
+          to: { userId: "user-1", username: "", avatarUrl: null },
+          amount: 25,
+        },
+      ]);
+    });
+
+    it("should handle cross expenses between users", async () => {
+      const expenses = [
+        makeMockExpense({
+          id: "e-1",
+          spentById: "user-1",
+          participants: [
+            makeMockParticipant({
+              user: makeMockUser({ id: "user-2" }),
+              amount: 50,
+            }),
+            makeMockParticipant({
+              user: makeMockUser({ id: "user-3" }),
+              amount: 50,
+            }),
+          ],
+        }),
+        makeMockExpense({
+          id: "e-2",
+          spentById: "user-2",
+          participants: [
+            makeMockParticipant({
+              user: makeMockUser({ id: "user-1" }),
+              amount: 30,
+            }),
+          ],
+        }),
+      ];
+      prismaExpense.findMany.mockResolvedValue(expenses);
+      prismaExpenseSettlement.findMany.mockResolvedValue([]);
+
+      const result = await service.getSettlementsByGroupId("g-1");
+
+      expect(result).toEqual([
+        {
+          from: { userId: "user-3", username: "", avatarUrl: null },
+          to: { userId: "user-1", username: "", avatarUrl: null },
+          amount: 50,
+        },
+        {
+          from: { userId: "user-2", username: "", avatarUrl: null },
+          to: { userId: "user-1", username: "", avatarUrl: null },
+          amount: 20,
+        },
+      ]);
     });
 
     it("should account for already-settled amounts", async () => {
       const expenses = [
-        makeExpense({
-          participants: [makeParticipant({ amount: 50, userId: "user-2" })],
+        makeMockExpense({
+          participants: [makeMockParticipant({ amount: 50 })],
         }),
       ];
-      const settlements = [makeSettlement({ amount: 20 })];
+      const settlements = [makeMockSettlement({ amount: 20 })];
       prismaExpense.findMany.mockResolvedValue(expenses);
       prismaExpenseSettlement.findMany.mockResolvedValue(settlements);
 
-      const result = await service.getPendingSettlementsByGroupId("g-1");
-
-      expect(result).toEqual([{ from: "user-2", to: "user-1", amount: 30 }]);
-    });
-
-    it("should return empty array for group with no expenses", async () => {
-      prismaExpense.findMany.mockResolvedValue([]);
-      prismaExpenseSettlement.findMany.mockResolvedValue([]);
-
-      const result = await service.getPendingSettlementsByGroupId("g-1");
-
-      expect(result).toEqual([]);
-    });
-
-    it("should return empty array when everything is fully settled", async () => {
-      const expenses = [
-        makeExpense({
-          participants: [makeParticipant({ amount: 50, userId: "user-2" })],
-        }),
-      ];
-      const settlements = [makeSettlement({ amount: 50 })];
-
-      prismaExpense.findMany.mockResolvedValue(expenses);
-      prismaExpenseSettlement.findMany.mockResolvedValue(settlements);
-
-      const result = await service.getPendingSettlementsByGroupId("g-1");
-
-      expect(result).toEqual([]);
-    });
-
-    it("should handle complex multi-user group scenario", async () => {
-      const expenses = [
-        makeExpense({
-          id: "e-1",
-          spentById: "user-1",
-          participants: [
-            makeParticipant({ id: "p-1", amount: 30, userId: "user-2" }),
-            makeParticipant({ id: "p-2", amount: 30, userId: "user-3" }),
-          ],
-        }),
-        makeExpense({
-          id: "e-2",
-          spentById: "user-2",
-          participants: [
-            makeParticipant({ id: "p-3", amount: 50, userId: "user-1" }),
-          ],
-        }),
-      ];
-      prismaExpense.findMany.mockResolvedValue(expenses);
-      prismaExpenseSettlement.findMany.mockResolvedValue([]);
-
-      const result = await service.getPendingSettlementsByGroupId("g-1");
+      const result = await service.getSettlementsByGroupId("g-1");
 
       expect(result).toEqual([
-        { from: "user-3", to: "user-2", amount: 20 },
-        { from: "user-3", to: "user-1", amount: 10 },
+        {
+          from: { userId: "user-2", username: "", avatarUrl: null },
+          to: { userId: "user-1", username: "", avatarUrl: null },
+          amount: 30,
+        },
       ]);
     });
 
-    it("should call all sub-methods in correct order", async () => {
-      const getExpensesSpy = jest.spyOn(service, "getAllExpensesByGroupId");
-      const getSettlementsSpy = jest.spyOn(
-        service,
-        "getAllSettlementsByGroupId",
-      );
-      const calculateSpy = jest.spyOn(service, "calculateBalances");
-      const splitSpy = jest.spyOn(service, "splitBalancesToDebtorAndCreditor");
-      const simplifySpy = jest.spyOn(service, "simplifyDebts");
+    it("should return empty array when fully settled", async () => {
+      const expenses = [
+        makeMockExpense({
+          participants: [makeMockParticipant({ amount: 50 })],
+        }),
+      ];
+      const settlements = [makeMockSettlement({ amount: 50 })];
+      prismaExpense.findMany.mockResolvedValue(expenses);
+      prismaExpenseSettlement.findMany.mockResolvedValue(settlements);
 
+      const result = await service.getSettlementsByGroupId("g-1");
+
+      expect(result).toEqual([]);
+    });
+
+    it("should return empty array when no expenses exist", async () => {
       prismaExpense.findMany.mockResolvedValue([]);
       prismaExpenseSettlement.findMany.mockResolvedValue([]);
 
-      await service.getPendingSettlementsByGroupId("g-1");
+      const result = await service.getSettlementsByGroupId("g-1");
 
-      expect(getExpensesSpy).toHaveBeenCalledWith("g-1");
-      expect(getSettlementsSpy).toHaveBeenCalledWith("g-1");
-      expect(calculateSpy).toHaveBeenCalled();
-      expect(splitSpy).toHaveBeenCalled();
-      expect(simplifySpy).toHaveBeenCalled();
+      expect(result).toEqual([]);
+    });
 
-      getExpensesSpy.mockRestore();
-      getSettlementsSpy.mockRestore();
-      calculateSpy.mockRestore();
-      splitSpy.mockRestore();
-      simplifySpy.mockRestore();
+    it("should handle complex multi-user scenario", async () => {
+      const expenses = [
+        makeMockExpense({
+          id: "e-1",
+          spentById: "user-1",
+          participants: [
+            makeMockParticipant({
+              user: makeMockUser({ id: "user-2" }),
+              amount: 30,
+            }),
+            makeMockParticipant({
+              user: makeMockUser({ id: "user-3" }),
+              amount: 30,
+            }),
+          ],
+        }),
+        makeMockExpense({
+          id: "e-2",
+          spentById: "user-2",
+          participants: [
+            makeMockParticipant({
+              user: makeMockUser({ id: "user-1" }),
+              amount: 50,
+            }),
+          ],
+        }),
+      ];
+      prismaExpense.findMany.mockResolvedValue(expenses);
+      prismaExpenseSettlement.findMany.mockResolvedValue([]);
+
+      const result = await service.getSettlementsByGroupId("g-1");
+
+      expect(result).toEqual([
+        {
+          from: { userId: "user-3", username: "", avatarUrl: null },
+          to: { userId: "user-2", username: "", avatarUrl: null },
+          amount: 20,
+        },
+        {
+          from: { userId: "user-3", username: "", avatarUrl: null },
+          to: { userId: "user-1", username: "", avatarUrl: null },
+          amount: 10,
+        },
+      ]);
+    });
+  });
+
+  describe("settleExpense", () => {
+    it("should create a settlement record", async () => {
+      const created = {
+        id: "s-1",
+        amount: 50,
+        fromUserId: "user-2",
+        toUserId: "user-1",
+      };
+      prismaExpenseSettlement.create.mockResolvedValue(created);
+
+      const result = await service.settleExpense("g-1", {
+        amount: 50,
+        fromUserId: "user-2",
+        toUserId: "user-1",
+      });
+
+      expect(prismaExpenseSettlement.create).toHaveBeenCalled();
+      expect(result).toEqual(created);
+    });
+  });
+
+  describe("updateSettlementStatus", () => {
+    it("should update status successfully", async () => {
+      const existing = { toUserId: "user-1", status: "PENDING" };
+      const updated = { id: "s-1", toUserId: "user-1", status: "SETTLED" };
+      prismaExpenseSettlement.findUnique.mockResolvedValue(existing);
+      prismaExpenseSettlement.update.mockResolvedValue(updated);
+
+      const result = await service.updateSettlementStatus(
+        "user-1",
+        "g-1",
+        "s-1",
+        SettlementStatus.SETTLED,
+      );
+
+      expect(prismaExpenseSettlement.findUnique).toHaveBeenCalledWith({
+        where: { id: "s-1", groupId: "g-1" },
+      });
+      expect(prismaExpenseSettlement.update).toHaveBeenCalled();
+      expect(result).toEqual(updated);
+    });
+
+    it("should throw NotFoundException when settlement not found", async () => {
+      prismaExpenseSettlement.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.updateSettlementStatus(
+          "user-1",
+          "g-1",
+          "missing",
+          SettlementStatus.SETTLED,
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("should throw ForbiddenException when not the receiver", async () => {
+      prismaExpenseSettlement.findUnique.mockResolvedValue({
+        toUserId: "user-2",
+        status: "PENDING",
+      });
+
+      await expect(
+        service.updateSettlementStatus(
+          "user-1",
+          "g-1",
+          "s-1",
+          SettlementStatus.SETTLED,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("should throw BadRequestException when already SETTLED", async () => {
+      prismaExpenseSettlement.findUnique.mockResolvedValue({
+        toUserId: "user-1",
+        status: "SETTLED",
+      });
+
+      await expect(
+        service.updateSettlementStatus(
+          "user-1",
+          "g-1",
+          "s-1",
+          SettlementStatus.SETTLED,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe("getRecentSettlementTransactions", () => {
+    it("should fetch with default count", async () => {
+      const transactions = [makeMockSettlement()];
+      prismaExpenseSettlement.findMany.mockResolvedValue(transactions);
+
+      const result = await service.getRecentSettlementTransactions("g-1");
+
+      expect(prismaExpenseSettlement.findMany).toHaveBeenCalledWith({
+        where: { groupId: "g-1", status: undefined },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        include: {
+          fromUser: { select: { avatarUrl: true, username: true } },
+          toUser: { select: { avatarUrl: true, username: true } },
+        },
+      });
+      expect(result).toEqual(transactions);
+    });
+
+    it("should fetch with status filter and custom count", async () => {
+      const transactions = [makeMockSettlement()];
+      prismaExpenseSettlement.findMany.mockResolvedValue(transactions);
+
+      const result = await service.getRecentSettlementTransactions(
+        "g-1",
+        SettlementStatus.SETTLED,
+        5,
+      );
+
+      expect(prismaExpenseSettlement.findMany).toHaveBeenCalledWith({
+        where: { groupId: "g-1", status: SettlementStatus.SETTLED },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        include: {
+          fromUser: { select: { avatarUrl: true, username: true } },
+          toUser: { select: { avatarUrl: true, username: true } },
+        },
+      });
+      expect(result).toEqual(transactions);
     });
   });
 });
