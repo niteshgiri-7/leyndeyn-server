@@ -9,12 +9,24 @@ export type GroupSettlements = Awaited<
 >;
 
 export type Balance = {
-  userId: string;
+  user: IUser;
   amount: number;
 };
 
+export type BalanceEntry = {
+  userId: string;
+  avatarUrl: string | null;
+  amount: number;
+};
+
+export interface IUser {
+  avatarUrl: string | null;
+  username: string;
+  userId: string;
+}
+
 export type Settlement = {
-  from: string;
-  to: string;
+  from: IUser;
+  to: IUser;
   amount: number;
 };

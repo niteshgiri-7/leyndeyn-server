@@ -8,6 +8,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { CreateExpenseSettlementDto } from "./dto/create-expense-settlement.dto";
 import {
   Balance,
+  BalanceEntry,
   GroupExpenses,
   GroupSettlements,
   Settlement,
@@ -23,7 +24,12 @@ export class SettlementService {
         groupId,
       },
       include: {
-        participants: true,
+        participants: {
+          select: {
+            user: true,
+            amount: true,
+          },
+        },
         spentBy: {
           omit: {
             passwordHash: true,
@@ -39,11 +45,9 @@ export class SettlementService {
       where: {
         groupId,
       },
-      select: {
-        amount: true,
-        fromUserId: true,
-        toUserId: true,
-        status: true,
+      include: {
+        fromUser: true,
+        toUser: true,
       },
     });
     return settlements;
@@ -52,54 +56,79 @@ export class SettlementService {
   private calculateBalances(
     expenses: GroupExpenses,
     settledExpenses: GroupSettlements,
-  ): Map<string, number> {
-    const balances = new Map<string, number>();
+  ): Map<string, BalanceEntry> {
+    const balances = new Map<string, BalanceEntry>();
 
     for (const expense of expenses) {
       for (const participant of expense.participants) {
         //ones who are required to pay(people in debt)
-        balances.set(
-          participant.userId,
-          (balances.get(participant.userId) ?? 0) - participant.amount,
-        );
+        balances.set(participant.user.id, {
+          amount:
+            (balances.get(participant.user.id)?.amount ?? 0) -
+            participant.amount,
+          userId: participant.user.id,
+          avatarUrl: participant.user.avatarUrl,
+        });
         //ones who are required to receive money(people in credit)
         //if the person who spent the money in this expense is a participant in other expenses, then
         //we need to subtract the amount they owe.
-        balances.set(
-          expense.spentById,
-          (balances.get(expense.spentById) ?? 0) + participant.amount,
-        );
+        balances.set(expense.spentById, {
+          amount:
+            (balances.get(expense.spentById)?.amount ?? 0) + participant.amount,
+          avatarUrl: expense.spentBy.avatarUrl,
+          userId: expense.spentById,
+        });
       }
     }
 
     for (const settledExpense of settledExpenses) {
       balances.set(
         settledExpense.fromUserId,
-        (balances.get(settledExpense.fromUserId) ?? 0) + settledExpense.amount,
+        // (balances.get(settledExpense.fromUserId) ?? 0) + settledExpense.amount,
+        {
+          amount:
+            (balances.get(settledExpense.fromUserId)?.amount ?? 0) +
+            settledExpense.amount,
+          avatarUrl: settledExpense.fromUser.avatarUrl,
+          userId: settledExpense.fromUserId,
+        },
       );
-      balances.set(
-        settledExpense.toUserId,
-        (balances.get(settledExpense.toUserId) ?? 0) - settledExpense.amount,
-      );
+      balances.set(settledExpense.toUserId, {
+        amount:
+          (balances.get(settledExpense.toUserId)?.amount ?? 0) -
+          settledExpense.amount,
+        avatarUrl: settledExpense.toUser.avatarUrl,
+        userId: settledExpense.toUserId,
+      });
     }
 
     return balances;
   }
 
-  private splitBalancesToDebtorAndCreditor(balances: Map<string, number>) {
+  private splitBalancesToDebtorAndCreditor(
+    balances: Map<string, BalanceEntry>,
+  ) {
     const debtors: Balance[] = [];
     const creditors: Balance[] = [];
 
-    for (const [userId, amount] of balances) {
-      if (amount < 0) {
+    for (const [userId, balanceEntry] of balances) {
+      if (balanceEntry.amount < 0) {
         debtors.push({
-          userId,
-          amount: -amount,
+          user: {
+            avatarUrl: null,
+            userId,
+            username: "",
+          },
+          amount: -balanceEntry.amount,
         });
       } else
         creditors.push({
-          userId,
-          amount,
+          user: {
+            avatarUrl: null,
+            userId,
+            username: "",
+          },
+          amount: balanceEntry.amount,
         });
     }
 
@@ -122,8 +151,16 @@ export class SettlementService {
       const payment = Math.min(debtor.amount, creditor.amount);
 
       settlements.push({
-        from: debtor.userId,
-        to: creditor.userId,
+        from: {
+          avatarUrl: debtor.user.avatarUrl,
+          userId: debtor.user.userId,
+          username: debtor.user.username,
+        },
+        to: {
+          avatarUrl: creditor.user.avatarUrl,
+          userId: creditor.user.userId,
+          username: creditor.user.username,
+        },
         amount: payment,
       });
 
