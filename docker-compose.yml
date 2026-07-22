@@ -10,7 +10,7 @@ services:
     ports:
       - '8080:8080'
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
     volumes:
@@ -29,8 +29,8 @@ services:
     image: postgres:16-alpine
     container_name: leyndeyn_postgres
     restart: unless-stopped
-    ports:
-      - '5432:5432'                   # expose so you can connect via pgAdmin / DBeaver
+    # ports:
+    #   - '5432:5432'                   # expose so you can connect via pgAdmin / DBeaver
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -50,8 +50,8 @@ services:
     image: redis:7-alpine
     container_name: leyndeyn_redis
     restart: unless-stopped
-    ports:
-      - '6379:6379'                   # expose so you can inspect via redis-cli / RedisInsight
+    # ports:
+    #   - '6379:6379'                   # expose so you can inspect via redis-cli / RedisInsight
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     volumes:
       - redis_data:/data
