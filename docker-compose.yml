@@ -8,7 +8,7 @@ services:
     container_name: leyndeyn_app
     restart: unless-stopped
     ports:
-      - '9001:9001'
+      - '7777:7777'
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
