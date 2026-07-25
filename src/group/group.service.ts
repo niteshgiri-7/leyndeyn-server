@@ -210,7 +210,7 @@ export class GroupService {
   }
 
   async getAllGroupsForUser(userId: string) {
-    return await this.prisma.group.findMany({
+    const groups = await this.prisma.group.findMany({
       where: {
         members: {
           some: {
@@ -218,7 +218,11 @@ export class GroupService {
           },
         },
       },
+      include: {
+        members: true,
+      },
     });
+    return groups.filter((group) => group.members.length > 2); // Filter out friend groups (groups with exactly 2 members)
   }
 
   async joinGroupViaInvitationCode(invitationCode: string, userId: string) {
