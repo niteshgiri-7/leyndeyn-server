@@ -11,6 +11,7 @@ import { GroupRole } from "../../generated/prisma/client/enums";
 type PrismaGroupMock = {
   create: jest.Mock;
   findUnique: jest.Mock;
+  findMany: jest.Mock;
   update: jest.Mock;
   findFirst: jest.Mock;
   delete: jest.Mock;
@@ -21,15 +22,21 @@ type PrismaGroupMemberMock = {
   create: jest.Mock;
 };
 
+type PrismaUserMock = {
+  findUnique: jest.Mock;
+};
+
 describe("GroupService", () => {
   let service: GroupService;
   let prismaGroup: PrismaGroupMock;
   let prismaGroupMember: PrismaGroupMemberMock;
+  let prismaUser: PrismaUserMock;
 
   beforeEach(async () => {
     prismaGroup = {
       create: jest.fn(),
       findUnique: jest.fn(),
+      findMany: jest.fn(),
       update: jest.fn(),
       findFirst: jest.fn(),
       delete: jest.fn(),
@@ -40,9 +47,14 @@ describe("GroupService", () => {
       create: jest.fn(),
     };
 
+    prismaUser = {
+      findUnique: jest.fn(),
+    };
+
     const prismaMock = {
       group: prismaGroup,
       groupMember: prismaGroupMember,
+      user: prismaUser,
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -65,8 +77,14 @@ describe("GroupService", () => {
   describe("createGroup", () => {
     it("creates a group and adds admin member", async () => {
       const userId = "user-1";
-      const data = { name: "Test Group1", description: "demo" };
-      const created = { id: "group-12", ...data };
+      const data: { name: string; description: string } = {
+        name: "Test Group1",
+        description: "demo",
+      };
+      const created: { id: string; name: string; description: string } = {
+        id: "group-12",
+        ...data,
+      };
       prismaGroup.create.mockResolvedValue(created);
 
       const result = await service.createGroup(userId, data);
@@ -75,9 +93,117 @@ describe("GroupService", () => {
     });
   });
 
+  describe("createFriendGroup", () => {
+    it("creates a two-admin group for a valid friend email", async () => {
+      const userId = "user-1";
+      const friendEmail = "friend@local";
+      const friend: { id: string } = { id: "user-2" };
+      const created: { id: string; name: string } = { id: "group-1", name: "" };
+
+      prismaUser.findUnique.mockResolvedValue(friend);
+      prismaGroup.create.mockResolvedValue(created);
+
+      const result = await service.createFriendGroup(userId, friendEmail);
+
+      expect(result).toEqual(created);
+      expect(prismaUser.findUnique).toHaveBeenCalledWith({
+        where: { email: friendEmail },
+        select: { id: true },
+      });
+      const createCall = prismaGroup.create.mock.calls[0] as unknown[];
+      const createPayload = createCall[0] as {
+        data: {
+          name: string;
+          invitationCode: string;
+          members: {
+            createMany: {
+              data: Array<{ userId: string; role: GroupRole }>;
+            };
+          };
+        };
+      };
+
+      expect(createPayload).toBeDefined();
+      expect(createPayload.data.name).toBe("");
+      expect(typeof createPayload.data.invitationCode).toBe("string");
+      expect(createPayload.data.members.createMany.data).toEqual([
+        { userId, role: GroupRole.ADMIN },
+        { userId: friend.id, role: GroupRole.ADMIN },
+      ]);
+    });
+
+    it("throws when the friend email belongs to the current user", async () => {
+      prismaUser.findUnique.mockResolvedValue({ id: "user-1" });
+
+      await expect(
+        service.createFriendGroup("user-1", "friend@local"),
+      ).rejects.toThrow(
+        new BadRequestException("You cannot add yourself as a friend"),
+      );
+      expect(prismaGroup.create).not.toHaveBeenCalled();
+    });
+
+    it("throws when no user exists for the provided email", async () => {
+      prismaUser.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.createFriendGroup("user-1", "missing@local"),
+      ).rejects.toThrow(
+        new NotFoundException("No user found with email: missing@local"),
+      );
+      expect(prismaGroup.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getAllFriendGroups", () => {
+    it("returns groups with exactly two members for the current user", async () => {
+      const groups: Array<{
+        id: string;
+        name: string;
+        members: Array<{ userId: string }>;
+      }> = [
+        {
+          id: "group-1",
+          name: "",
+          members: [{ userId: "user-1" }, { userId: "user-2" }],
+        },
+      ];
+      prismaGroup.findMany.mockResolvedValue(groups);
+
+      const result = await service.getAllFriendGroups("user-1");
+
+      expect(result).toEqual(groups);
+      expect(prismaGroup.findMany).toHaveBeenCalledWith({
+        where: {
+          members: {
+            some: {
+              userId: "user-1",
+            },
+          },
+        },
+        include: {
+          members: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  username: true,
+                },
+              },
+            },
+          },
+        },
+      });
+    });
+  });
+
   describe("findGroupById", () => {
     it("returns the group when found", async () => {
-      const group = { id: "group-1", name: "Test" };
+      const group: { id: string; name: string } = {
+        id: "group-1",
+        name: "Test",
+      };
       prismaGroup.findUnique.mockResolvedValue(group);
 
       const result = await service.findGroupById("group-1");
@@ -99,9 +225,15 @@ describe("GroupService", () => {
 
   describe("updateGroupById", () => {
     it("updates when group exists", async () => {
-      const existing = { id: "group-1", name: "Old" };
-      const update = { name: "New" };
-      const updated = { id: "group-1", name: "New" };
+      const existing: { id: string; name: string } = {
+        id: "group-1",
+        name: "Old",
+      };
+      const update: { name: string } = { name: "New" };
+      const updated: { id: string; name: string } = {
+        id: "group-1",
+        name: "New",
+      };
       prismaGroup.findUnique.mockResolvedValue(existing);
       prismaGroup.update.mockResolvedValue(updated);
 
@@ -126,7 +258,10 @@ describe("GroupService", () => {
 
   describe("deleteGroupById", () => {
     it("deletes when only one member", async () => {
-      const group = { id: "group-1", name: "Test" };
+      const group: { id: string; name: string } = {
+        id: "group-1",
+        name: "Test",
+      };
       prismaGroup.findUnique.mockResolvedValue(group);
       prismaGroup.findFirst.mockResolvedValue({
         id: "group-1",

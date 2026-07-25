@@ -10,6 +10,7 @@ import {
 } from "@nestjs/common";
 import { GroupService } from "./group.service";
 import { CreateGroupDto } from "./dto/create-group.dto";
+import { CreateFriendGroupDto } from "./dto/create-friend-group.dto";
 import { JoinGroupViaInvitationDto } from "./dto/join-group-via-invitation.dto";
 import { AuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorator/current-user.decorator";
@@ -41,6 +42,21 @@ export class GroupController {
     @Body() data: CreateGroupDto,
   ) {
     return await this.groupService.createGroup(user?.id, data);
+  }
+
+  @ALLOW_NON_ADMIN()
+  @Post("/friends")
+  async createFriendGroup(
+    @CurrentUser() user: JwtPayload,
+    @Body() data: CreateFriendGroupDto,
+  ) {
+    return await this.groupService.createFriendGroup(user?.id, data.email);
+  }
+
+  @ALLOW_NON_ADMIN()
+  @Get("/friends")
+  async getAllFriendGroups(@CurrentUser() user: JwtPayload) {
+    return await this.groupService.getAllFriendGroups(user?.id);
   }
 
   @ALLOW_NON_ADMIN()

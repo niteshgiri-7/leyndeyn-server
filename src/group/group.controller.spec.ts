@@ -16,6 +16,8 @@ describe("GroupController", () => {
   let groupService: {
     findGroupById: jest.Mock;
     createGroup: jest.Mock;
+    createFriendGroup: jest.Mock;
+    getAllFriendGroups: jest.Mock;
     updateGroupById: jest.Mock;
     deleteGroupById: jest.Mock;
     joinGroupViaInvitationCode: jest.Mock;
@@ -25,6 +27,8 @@ describe("GroupController", () => {
     groupService = {
       findGroupById: jest.fn(),
       createGroup: jest.fn(),
+      createFriendGroup: jest.fn(),
+      getAllFriendGroups: jest.fn(),
       updateGroupById: jest.fn(),
       deleteGroupById: jest.fn(),
       joinGroupViaInvitationCode: jest.fn(),
@@ -71,6 +75,30 @@ describe("GroupController", () => {
 
     expect(result).toEqual(created);
     expect(groupService.createGroup).toHaveBeenCalledWith(mockUser.id, payload);
+  });
+
+  it("creates a friend group", async () => {
+    const dto = { email: "friend@local" };
+    const created = { id: "group-1", name: "" };
+    groupService.createFriendGroup.mockResolvedValue(created);
+
+    const result = await controller.createFriendGroup(mockUser, dto);
+
+    expect(result).toEqual(created);
+    expect(groupService.createFriendGroup).toHaveBeenCalledWith(
+      mockUser.id,
+      dto.email,
+    );
+  });
+
+  it("gets all friend groups for the current user", async () => {
+    const groups = [{ id: "group-1", name: "" }];
+    groupService.getAllFriendGroups.mockResolvedValue(groups);
+
+    const result = await controller.getAllFriendGroups(mockUser);
+
+    expect(result).toEqual(groups);
+    expect(groupService.getAllFriendGroups).toHaveBeenCalledWith(mockUser.id);
   });
 
   it("updates group", async () => {

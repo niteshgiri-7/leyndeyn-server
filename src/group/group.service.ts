@@ -95,6 +95,63 @@ export class GroupService {
     });
   }
 
+  async createFriendGroup(userId: string, friendEmail: string) {
+    const friend = await this.prisma.user.findUnique({
+      where: { email: friendEmail },
+      select: { id: true },
+    });
+
+    if (!friend)
+      throw new NotFoundException(`No user found with email: ${friendEmail}`);
+
+    if (friend.id === userId)
+      throw new BadRequestException("You cannot add yourself as a friend");
+
+    const invitationCode = this.generateRandomInvitationCode();
+
+    return this.prisma.group.create({
+      data: {
+        name: "",
+        invitationCode,
+        members: {
+          createMany: {
+            data: [
+              { userId, role: GroupRole.ADMIN },
+              { userId: friend.id, role: GroupRole.ADMIN },
+            ],
+          },
+        },
+      },
+    });
+  }
+
+  async getAllFriendGroups(userId: string) {
+    const groups = await this.prisma.group.findMany({
+      where: {
+        members: {
+          some: {
+            userId,
+          },
+        },
+      },
+      include: {
+        members: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                username: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return groups.filter((group) => group.members.length === 2);
+  }
+
   async findGroupById(id: string) {
     const group = await this.prisma.group.findUnique({
       where: {
