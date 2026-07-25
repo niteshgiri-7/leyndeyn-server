@@ -222,7 +222,7 @@ export class GroupService {
         members: true,
       },
     });
-    return groups.filter((group) => group.members.length > 2); // Filter out friend groups (groups with exactly 2 members)
+    return groups.filter((group) => group.members.length !== 2); // Filter out friend groups (groups with exactly 2 members)
   }
 
   async joinGroupViaInvitationCode(invitationCode: string, userId: string) {
