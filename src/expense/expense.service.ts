@@ -69,8 +69,12 @@ export class ExpenseService {
     });
   }
 
-  async getExpensesByGroupId(groupId: string, dateRange?: DateRangeDto) {
-    return await this.prisma.expense.findMany({
+  async getExpensesByGroupId(
+    groupId: string,
+    currentUserId: string,
+    dateRange?: DateRangeDto,
+  ) {
+    const expenses = await this.prisma.expense.findMany({
       where: {
         groupId,
         createdAt: {
@@ -81,8 +85,31 @@ export class ExpenseService {
       include: {
         category: true,
         spentBy: true,
+        participants: {
+          include: {
+            user: true,
+          },
+        },
       },
     });
+
+    if (!expenses || !expenses.length) return [];
+
+    const decoratedExpenses = expenses.map((expense) => {
+      const myParticipants = expense.participants.find(
+        (p) => p.userId === currentUserId,
+      );
+      return {
+        paidBy: expense.spentBy.username,
+        paidAmount: expense.amount,
+        cause: expense.description,
+        category: expense.category.name,
+        oweAmount: myParticipants?.amount,
+        spentAt: expense.createdAt,
+      };
+    });
+
+    return decoratedExpenses;
   }
 
   async getExpenseByCategoryId(categoryId: string, dateRange?: DateRangeDto) {

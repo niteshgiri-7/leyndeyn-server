@@ -9,6 +9,15 @@ import type { Expense } from "../../generated/prisma/client/browser";
 import type { JwtPayload } from "../auth/jwt-payload.type";
 import { UpdateExpenseDto } from "./dto/update-expense.dto";
 
+type GroupExpenseResponse = {
+  paidBy: string;
+  paidAmount: number;
+  cause: string;
+  category: string;
+  oweAmount?: number;
+  spentAt: Date;
+};
+
 type ExpenseServiceMock = {
   createExpense: jest.Mock<Promise<Expense>, [CreateExpenseDto, string]>;
   getExpenseByCategoryId: jest.Mock<
@@ -20,8 +29,8 @@ type ExpenseServiceMock = {
     [string, DateRangeDto | undefined]
   >;
   getExpensesByGroupId: jest.Mock<
-    Promise<Expense[]>,
-    [string, DateRangeDto | undefined]
+    Promise<GroupExpenseResponse[]>,
+    [string, string, DateRangeDto | undefined]
   >;
   updateExpenseById: jest.Mock<
     Promise<Expense>,
@@ -72,8 +81,8 @@ describe("ExpenseController", () => {
         [string, DateRangeDto | undefined]
       >(),
       getExpensesByGroupId: jest.fn<
-        Promise<Expense[]>,
-        [string, DateRangeDto | undefined]
+        Promise<GroupExpenseResponse[]>,
+        [string, string, DateRangeDto | undefined]
       >(),
       updateExpenseById: jest.fn<
         Promise<Expense>,
@@ -152,14 +161,24 @@ describe("ExpenseController", () => {
   });
 
   it("gets expenses by group id", async () => {
-    const expenses = [makeMockExpense()];
+    const expenses: GroupExpenseResponse[] = [
+      {
+        paidBy: "payer-1",
+        paidAmount: 100,
+        cause: "Coffee",
+        category: "Food",
+        oweAmount: 50,
+        spentAt: new Date("2024-01-10"),
+      },
+    ];
     expenseService.getExpensesByGroupId.mockResolvedValue(expenses);
 
-    const result = await controller.getExpensesByGroupId("group-1");
+    const result = await controller.getExpensesByGroupId(mockUser, "group-1");
 
     expect(result).toEqual(expenses);
     expect(expenseService.getExpensesByGroupId).toHaveBeenCalledWith(
       "group-1",
+      mockUser.id,
       undefined,
     );
   });

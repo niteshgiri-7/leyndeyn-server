@@ -13,7 +13,7 @@ type ExpenseFindUniqueResult = Expense | { category: { scope: string } };
 
 type PrismaExpenseMock = {
   findUnique: jest.Mock<Promise<ExpenseFindUniqueResult | null>, [unknown]>;
-  findMany: jest.Mock<Promise<Expense[]>, [unknown]>;
+  findMany: jest.Mock<Promise<any[]>, [unknown]>;
   create: jest.Mock<
     Promise<Expense>,
     [{ data: CreateExpenseDto & { spentById: string } }]
@@ -80,6 +80,15 @@ const makeMockExpense = (overrides: Partial<Expense> = {}): Expense => ({
   splitStrategy: SplitStrategy.EQUAL,
   ...overrides,
 });
+
+type GroupExpenseResponse = {
+  paidBy: string;
+  paidAmount: number;
+  cause: string;
+  category: string;
+  oweAmount?: number;
+  spentAt: Date;
+};
 
 describe("ExpenseService", () => {
   let service: ExpenseService;
@@ -235,14 +244,65 @@ describe("ExpenseService", () => {
   });
 
   describe("getExpensesByGroupId", () => {
-    it("should return expenses for a group", async () => {
-      const expenses = [makeMockExpense()];
-      prismaExpense.findMany.mockResolvedValue(expenses);
+    it("should return decorated expenses for a group and current user", async () => {
+      const expenses = [
+        {
+          ...makeMockExpense({
+            description: "Coffee",
+          }),
+          category: {
+            name: "Food",
+          },
+          spentBy: {
+            username: "payer-1",
+          },
+          participants: [
+            {
+              userId: "user-1",
+              amount: 50,
+              user: {
+                id: "user-1",
+                username: "tester",
+                email: "test@local",
+                avatarUrl: null,
+                passwordHash: null,
+                createdAt: new Date("2024-01-01"),
+                updatedAt: new Date("2024-01-01"),
+                isVerified: true,
+              },
+            },
+          ],
+        },
+      ];
+      prismaExpense.findMany.mockResolvedValue(expenses as any[]);
 
-      const result = await service.getExpensesByGroupId("group-1");
+      const result = await service.getExpensesByGroupId("group-1", "user-1");
 
-      expect(prismaExpense.findMany).toHaveBeenCalled();
-      expect(result).toEqual(expenses);
+      expect(prismaExpense.findMany).toHaveBeenCalledWith({
+        where: {
+          groupId: "group-1",
+          createdAt: { gte: undefined, lte: undefined },
+        },
+        include: {
+          category: true,
+          spentBy: true,
+          participants: {
+            include: {
+              user: true,
+            },
+          },
+        },
+      });
+      expect(result).toEqual<GroupExpenseResponse[]>([
+        {
+          paidBy: "payer-1",
+          paidAmount: 100,
+          cause: "Coffee",
+          category: "Food",
+          oweAmount: 50,
+          spentAt: new Date("2024-01-10"),
+        },
+      ]);
     });
   });
 

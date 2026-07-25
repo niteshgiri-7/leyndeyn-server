@@ -77,10 +77,15 @@ export class ExpenseController {
   @CheckAccess("group")
   @Get("/group/:groupId")
   async getExpensesByGroupId(
+    @CurrentUser() user: JwtPayload,
     @Param("groupId", ParseUUIDPipe) groupId: string,
     @Query() dateRange?: DateRangeDto,
   ) {
-    return await this.expenseService.getExpensesByGroupId(groupId, dateRange);
+    return await this.expenseService.getExpensesByGroupId(
+      groupId,
+      user.id,
+      dateRange,
+    );
   }
 
   @CheckAccess("group")
