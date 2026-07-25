@@ -152,9 +152,10 @@ export class GroupService {
 
     return groups
       .filter((group) => group.members.length === 2)
-      .filter((group) =>
-        group.members.some((member) => member.userId !== userId),
-      );
+      .map((group) => ({
+        ...group,
+        members: group.members.filter((member) => member.userId !== userId),
+      }));
   }
 
   async findGroupById(id: string) {
