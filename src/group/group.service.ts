@@ -107,6 +107,30 @@ export class GroupService {
     if (friend.id === userId)
       throw new BadRequestException("You cannot add yourself as a friend");
 
+    const existingFriendGroup = await this.prisma.group.findFirst({
+      where: {
+        name: "",
+        members: {
+          every: {
+            userId: {
+              in: [userId, friend.id],
+            },
+          },
+        },
+      },
+      include: {
+        _count: {
+          select: {
+            members: true,
+          },
+        },
+      },
+    });
+
+    if (existingFriendGroup?._count?.members === 2) {
+      throw new ConflictException("Friend group already exists");
+    }
+
     const invitationCode = this.generateRandomInvitationCode();
 
     return this.prisma.group.create({

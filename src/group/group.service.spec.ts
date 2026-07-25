@@ -203,6 +203,19 @@ describe("GroupService", () => {
       expect(prismaGroup.create).not.toHaveBeenCalled();
     });
 
+    it("throws when a friend group already exists for the two users", async () => {
+      const friend: { id: string } = { id: "user-2" };
+      prismaUser.findUnique.mockResolvedValue(friend);
+      prismaGroup.findFirst.mockResolvedValue({
+        _count: { members: 2 },
+      });
+
+      await expect(
+        service.createFriendGroup("user-1", "friend@local"),
+      ).rejects.toThrow(new ConflictException("Friend group already exists"));
+      expect(prismaGroup.create).not.toHaveBeenCalled();
+    });
+
     it("throws when no user exists for the provided email", async () => {
       prismaUser.findUnique.mockResolvedValue(null);
 
