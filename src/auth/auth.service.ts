@@ -38,7 +38,7 @@ export class AuthService {
     };
 
     const accessToken = await this.generateJwtToken(payload, {
-      expiresIn: "1h",
+      expiresIn: "7d",
     });
     const refreshToken = await this.generateJwtToken(payload, {
       expiresIn: "7d",
