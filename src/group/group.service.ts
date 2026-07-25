@@ -245,6 +245,9 @@ export class GroupService {
       include: {
         members: true,
       },
+      orderBy: {
+        updatedAt: "desc",
+      },
     });
     return groups.filter((group) => group.members.length !== 2); // Filter out friend groups (groups with exactly 2 members)
   }
