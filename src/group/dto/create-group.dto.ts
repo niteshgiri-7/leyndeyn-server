@@ -1,6 +1,6 @@
 import {
+  IsArray,
   IsBoolean,
-  IsEmail,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -27,6 +27,7 @@ export class CreateGroupDto {
   allowMembersToManageCategory?: boolean;
 
   @IsOptional()
-  @IsEmail()
-  participantEmail?: string;
+  @IsArray()
+  @IsString({ each: true })
+  userIds?: string[];
 }

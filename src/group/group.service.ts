@@ -43,32 +43,32 @@ export class GroupService {
         },
       },
     });
-
+    // FIXME:fix this, check the group name and created by userId instead, because a user can be admin of multiple groups with the same name created by different users.
     if (exists)
       throw new BadRequestException(
         "Group with this name and your role as admin already exists",
       );
 
-    // Resolve participant by email if provided
-    let participantId: string | null = null;
+    const invitedUserIds = data.userIds ?? [];
+    const uniqueUserIds = [...new Set(invitedUserIds)];
 
-    if (data.participantEmail) {
+    if (uniqueUserIds.includes(userId)) {
+      throw new BadRequestException("You cannot add yourself as a participant");
+    }
+
+    const resolvedUserIds: string[] = [];
+
+    for (const invitedUserId of uniqueUserIds) {
       const participant = await this.prisma.user.findUnique({
-        where: { email: data.participantEmail },
+        where: { id: invitedUserId },
         select: { id: true },
       });
 
-      if (!participant)
-        throw new NotFoundException(
-          `No user found with email: ${data.participantEmail}`,
-        );
+      if (!participant) {
+        throw new NotFoundException(`No user found with id: ${invitedUserId}`);
+      }
 
-      if (participant.id === userId)
-        throw new BadRequestException(
-          "You cannot add yourself as a participant",
-        );
-
-      participantId = participant.id;
+      resolvedUserIds.push(participant.id);
     }
 
     const invitationCode = this.generateRandomInvitationCode();
@@ -84,10 +84,10 @@ export class GroupService {
           createMany: {
             data: [
               { userId, role: GroupRole.ADMIN },
-              // Only include participant entry if email was resolved
-              ...(participantId
-                ? [{ userId: participantId, role: GroupRole.MEMBER }]
-                : []),
+              ...resolvedUserIds.map((memberUserId) => ({
+                userId: memberUserId,
+                role: GroupRole.MEMBER,
+              })),
             ],
           },
         },

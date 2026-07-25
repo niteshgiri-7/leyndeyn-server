@@ -9,21 +9,21 @@ import { GroupService } from "./group.service";
 import { GroupRole } from "../../generated/prisma/client/enums";
 
 type PrismaGroupMock = {
-  create: jest.Mock;
-  findUnique: jest.Mock;
-  findMany: jest.Mock;
-  update: jest.Mock;
-  findFirst: jest.Mock;
-  delete: jest.Mock;
+  create: jest.MockedFunction<jest.Mock>;
+  findUnique: jest.MockedFunction<jest.Mock>;
+  findMany: jest.MockedFunction<jest.Mock>;
+  update: jest.MockedFunction<jest.Mock>;
+  findFirst: jest.MockedFunction<jest.Mock>;
+  delete: jest.MockedFunction<jest.Mock>;
 };
 
 type PrismaGroupMemberMock = {
-  findFirst: jest.Mock;
-  create: jest.Mock;
+  findFirst: jest.MockedFunction<jest.Mock>;
+  create: jest.MockedFunction<jest.Mock>;
 };
 
 type PrismaUserMock = {
-  findUnique: jest.Mock;
+  findUnique: jest.MockedFunction<jest.Mock>;
 };
 
 describe("GroupService", () => {
@@ -75,21 +75,81 @@ describe("GroupService", () => {
   });
 
   describe("createGroup", () => {
-    it("creates a group and adds admin member", async () => {
+    it("creates a group and adds the creator as admin and supplied users as members", async () => {
       const userId = "user-1";
-      const data: { name: string; description: string } = {
+      const data: { name: string; description: string; userIds?: string[] } = {
         name: "Test Group1",
         description: "demo",
+        userIds: ["user-2", "user-3"],
       };
       const created: { id: string; name: string; description: string } = {
         id: "group-12",
         ...data,
       };
+      const firstResolvedUser: { id: string } = { id: "user-2" };
+      const secondResolvedUser: { id: string } = { id: "user-3" };
+
+      prismaUser.findUnique.mockResolvedValueOnce(firstResolvedUser);
+      prismaUser.findUnique.mockResolvedValueOnce(secondResolvedUser);
       prismaGroup.create.mockResolvedValue(created);
 
       const result = await service.createGroup(userId, data);
+
       expect(result).toEqual(created);
-      expect(prismaGroup.create).toHaveBeenCalledTimes(1);
+      expect(prismaUser.findUnique).toHaveBeenCalledWith({
+        where: { id: "user-2" },
+        select: { id: true },
+      });
+      expect(prismaUser.findUnique).toHaveBeenCalledWith({
+        where: { id: "user-3" },
+        select: { id: true },
+      });
+      const expectedMemberData: Array<{ userId: string; role: GroupRole }> = [
+        { userId, role: GroupRole.ADMIN },
+        { userId: "user-2", role: GroupRole.MEMBER },
+        { userId: "user-3", role: GroupRole.MEMBER },
+      ];
+
+      const createCall = prismaGroup.create.mock.calls[0] as unknown[];
+      const createPayload = createCall[0] as {
+        data: {
+          members: {
+            createMany: {
+              data: Array<{ userId: string; role: GroupRole }>;
+            };
+          };
+        };
+      };
+
+      expect(createPayload).toBeDefined();
+      expect(createPayload.data.members.createMany.data).toEqual(
+        expectedMemberData,
+      );
+    });
+
+    it("throws when a supplied user id is the current user", async () => {
+      const data: { name: string; userIds?: string[] } = {
+        name: "Test Group1",
+        userIds: ["user-1"],
+      };
+
+      await expect(service.createGroup("user-1", data)).rejects.toThrow(
+        new BadRequestException("You cannot add yourself as a participant"),
+      );
+      expect(prismaGroup.create).not.toHaveBeenCalled();
+    });
+
+    it("throws when a supplied user id does not exist", async () => {
+      const data: { name: string; userIds?: string[] } = {
+        name: "Test Group1",
+        userIds: ["missing-user"],
+      };
+      prismaUser.findUnique.mockResolvedValue(null);
+
+      await expect(service.createGroup("user-1", data)).rejects.toThrow(
+        new NotFoundException("No user found with id: missing-user"),
+      );
+      expect(prismaGroup.create).not.toHaveBeenCalled();
     });
   });
 
@@ -172,7 +232,13 @@ describe("GroupService", () => {
 
       const result = await service.getAllFriendGroups("user-1");
 
-      expect(result).toEqual(groups);
+      expect(result).toEqual([
+        {
+          id: "group-1",
+          name: "",
+          members: [{ userId: "user-2" }],
+        },
+      ]);
       expect(prismaGroup.findMany).toHaveBeenCalledWith({
         where: {
           members: {
