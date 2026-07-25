@@ -30,6 +30,12 @@ export class GroupController {
   }
 
   @ALLOW_NON_ADMIN()
+  @Get("friends")
+  async getAllFriendGroups(@CurrentUser() user: JwtPayload) {
+    return await this.groupService.getAllFriendGroups(user?.id);
+  }
+
+  @ALLOW_NON_ADMIN()
   @Get(":groupId")
   async getGroupById(@Param("groupId") groupId: string) {
     return await this.groupService.findGroupById(groupId);
@@ -51,12 +57,6 @@ export class GroupController {
     @Body() data: CreateFriendGroupDto,
   ) {
     return await this.groupService.createFriendGroup(user?.id, data.email);
-  }
-
-  @ALLOW_NON_ADMIN()
-  @Get("/friends")
-  async getAllFriendGroups(@CurrentUser() user: JwtPayload) {
-    return await this.groupService.getAllFriendGroups(user?.id);
   }
 
   @ALLOW_NON_ADMIN()

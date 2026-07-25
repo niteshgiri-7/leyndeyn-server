@@ -189,6 +189,7 @@ describe("GroupService", () => {
                   id: true,
                   email: true,
                   username: true,
+                  avatarUrl: true,
                 },
               },
             },
