@@ -150,7 +150,11 @@ export class GroupService {
       },
     });
 
-    return groups.filter((group) => group.members.length === 2);
+    return groups
+      .filter((group) => group.members.length === 2)
+      .filter((group) =>
+        group.members.some((member) => member.userId !== userId),
+      );
   }
 
   async findGroupById(id: string) {
