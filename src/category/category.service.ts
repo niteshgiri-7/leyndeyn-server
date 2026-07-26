@@ -57,37 +57,31 @@ export class CategoryService {
   }
 
   async createGroupCategory(data: CreateCategoryDto, userId: string) {
-    const { ownerId, name } = data;
-    const membership = await this.getGroupMembership(ownerId, userId);
+    const { ownerId: groupId, name, description } = data;
+    const membership = await this.getGroupMembership(groupId, userId);
 
     if (!membership) throw new ForbiddenException("Not a group member");
 
     const group = await this.prismaService.group.findUnique({
       where: {
-        id: ownerId,
+        id: groupId,
       },
       select: {
         allowMembersToManageCategory: true,
       },
     });
 
-    if (!group) throw new ForbiddenException("Group not found");
+    if (!group) throw new NotFoundException("Group not found");
 
     if (!group.allowMembersToManageCategory && membership.role !== "ADMIN")
       throw new ForbiddenException("Admin access required");
 
-    const exists = await this.prismaService.category.findFirst({
-      where: {
-        name,
-        groupId: ownerId,
-      },
-    });
-
-    if (exists)
-      throw new ConflictException("Category with the same name already exists");
-
     return await this.prismaService.category.create({
-      data,
+      data: {
+        name,
+        description,
+        groupId,
+      },
     });
   }
 
