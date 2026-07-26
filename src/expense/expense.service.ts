@@ -178,7 +178,7 @@ export class ExpenseService {
         participants,
       });
 
-      return await prisma.expenseParticipant.createMany({
+      return await prisma.expenseParticipant.createManyAndReturn({
         data: calculatedSplits.map((s) => ({
           expenseId: expense.id,
           userId: s.userId,
