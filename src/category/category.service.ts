@@ -91,13 +91,8 @@ export class CategoryService {
     userId: string,
   ) {
     const category = await this.prismaService.category.findUnique({
-      where: {
-        id: categoryId,
-      },
-      select: {
-        groupId: true,
-        userId: true,
-      },
+      where: { id: categoryId },
+      select: { groupId: true, userId: true },
     });
 
     if (!category) throw new NotFoundException("Category not found");
@@ -107,46 +102,26 @@ export class CategoryService {
         category.groupId,
         userId,
       );
-
       if (!membership) throw new ForbiddenException("Not a group member");
 
       const group = await this.prismaService.group.findUnique({
-        where: {
-          id: category.groupId,
-        },
-        select: {
-          allowMembersToManageCategory: true,
-        },
+        where: { id: category.groupId },
+        select: { allowMembersToManageCategory: true },
       });
 
-      if (!group) throw new ForbiddenException("Group not found");
+      if (!group) throw new NotFoundException("Group not found");
 
       if (!group.allowMembersToManageCategory && membership.role !== "ADMIN")
         throw new ForbiddenException("Admin access required");
     } else if (category.userId !== userId) {
-      throw new ForbiddenException("OwnerId must match current user");
+      throw new ForbiddenException("Not authorized to update this category");
     }
 
-    const { name, ownerId } = data;
-
-    const exists = await this.prismaService.category.findFirst({
-      where: {
-        id: { not: categoryId },
-        name,
-        OR: [{ groupId: ownerId }, { userId: ownerId }],
-      },
-    });
-
-    if (exists)
-      throw new ConflictException(
-        "Category with the same name already exists for the given scope",
-      );
+    const { name, description } = data;
 
     return await this.prismaService.category.update({
-      where: {
-        id: categoryId,
-      },
-      data,
+      where: { id: categoryId },
+      data: { name, description },
     });
   }
 
