@@ -14,11 +14,14 @@ import { CurrentUser } from "../auth/decorator/current-user.decorator";
 import { AuthGuard } from "../auth/guards/jwt-auth.guard";
 import type { JwtPayload } from "../auth/jwt-payload.type";
 import { CreateExpenseDto } from "./dto/create-expense.dto";
-import { DateRangeDto } from "./dto/date-range.dto";
 import { ExpenseService } from "./expense.service";
 import { ManageExpenseGuard } from "./guard/manage-expense.guard";
 import { CheckAccess } from "./decorator/check-access.decorator";
 import { UpdateExpenseDto } from "./dto/update-expense.dto";
+import { ExpenseFilterQueryDto } from "./dto/expense-filter-query.dto";
+
+//TODO: enable to search the group expenses by description,category,amount,date range,spentBy
+//TODO: enable to search the personal expenses by description,category,amount,date range
 
 @UseGuards(AuthGuard, ManageExpenseGuard)
 @Controller("expense")
@@ -38,9 +41,9 @@ export class ExpenseController {
   @Get("personal")
   async getPersonalExpenses(
     @CurrentUser() user: JwtPayload,
-    @Query() dateRange?: DateRangeDto,
+    @Query() filters?: ExpenseFilterQueryDto,
   ) {
-    return await this.expenseService.getPersonalExpenses(user.id, dateRange);
+    return await this.expenseService.getPersonalExpenses(user.id, filters);
   }
 
   @CheckAccess("expense")
@@ -89,12 +92,12 @@ export class ExpenseController {
   async getExpensesByGroupId(
     @CurrentUser() user: JwtPayload,
     @Param("groupId", ParseUUIDPipe) groupId: string,
-    @Query() dateRange?: DateRangeDto,
+    @Query() filters?: ExpenseFilterQueryDto,
   ) {
     return await this.expenseService.getExpensesByGroupId(
       groupId,
       user.id,
-      dateRange,
+      filters,
     );
   }
 
@@ -103,11 +106,11 @@ export class ExpenseController {
   async getExpensesOfCategoryInGroup(
     @Param("groupId", ParseUUIDPipe) _groupId: string,
     @Param("categoryId", ParseUUIDPipe) categoryId: string,
-    @Query() dateRange?: DateRangeDto,
+    @Query() filters?: ExpenseFilterQueryDto,
   ) {
     return await this.expenseService.getExpenseByCategoryId(
       categoryId,
-      dateRange,
+      filters,
     );
   }
 
@@ -129,8 +132,8 @@ export class ExpenseController {
   @Get()
   async getAllExpensesOfAUser(
     @CurrentUser() user: JwtPayload,
-    @Query() dateRange?: DateRangeDto,
+    @Query() filters?: ExpenseFilterQueryDto,
   ) {
-    return await this.expenseService.getAllExpensesOfAUser(user.id, dateRange);
+    return await this.expenseService.getAllExpensesOfAUser(user.id, filters);
   }
 }

@@ -10,10 +10,10 @@ import {
   CreateExpenseDto,
   ExpenseParticipantDto,
 } from "./dto/create-expense.dto";
-import { DateRangeDto } from "./dto/date-range.dto";
 import { SplitStrategyFactory } from "./split/split-strategy.factory";
 import { IParticipant } from "./split/split.types";
 import { UpdateExpenseDto } from "./dto/update-expense.dto";
+import { ExpenseFilterQueryDto } from "./dto/expense-filter-query.dto";
 
 @Injectable()
 export class ExpenseService {
@@ -38,31 +38,60 @@ export class ExpenseService {
     return expense;
   }
 
-  async getPersonalExpenses(userId: string, dateRange?: DateRangeDto) {
+  private buildExpenseWhere(
+    filters?: ExpenseFilterQueryDto,
+    baseWhere: Record<string, unknown> = {},
+    allowSpentByFilter = false,
+  ) {
+    const where: Record<string, unknown> = { ...baseWhere };
+
+    if (filters?.description) {
+      where.description = {
+        contains: filters.description,
+        mode: "insensitive",
+      };
+    }
+
+    if (filters?.categoryId && where.categoryId == null) {
+      where.categoryId = filters.categoryId;
+    }
+
+    if (filters?.minAmount != null || filters?.maxAmount != null) {
+      where.amount = {
+        ...(filters?.minAmount != null ? { gte: filters.minAmount } : {}),
+        ...(filters?.maxAmount != null ? { lte: filters.maxAmount } : {}),
+      };
+    }
+
+    if (filters?.startDate || filters?.endDate) {
+      where.createdAt = {
+        ...(filters?.startDate ? { gte: filters.startDate } : {}),
+        ...(filters?.endDate ? { lte: filters.endDate } : {}),
+      };
+    }
+
+    if (allowSpentByFilter && filters?.spentById && where.spentById == null) {
+      where.spentById = filters.spentById;
+    }
+
+    return where;
+  }
+
+  async getPersonalExpenses(userId: string, filters?: ExpenseFilterQueryDto) {
     return await this.prisma.expense.findMany({
-      where: {
+      where: this.buildExpenseWhere(filters, {
         spentById: userId,
         groupId: null,
-        createdAt: {
-          gte: dateRange?.startDate,
-          lte: dateRange?.endDate,
-        },
-      },
+      }),
       include: {
         category: true,
       },
     });
   }
 
-  async getAllExpensesOfAUser(userId: string, dateRange?: DateRangeDto) {
+  async getAllExpensesOfAUser(userId: string, filters?: ExpenseFilterQueryDto) {
     return await this.prisma.expense.findMany({
-      where: {
-        spentById: userId,
-        createdAt: {
-          gte: dateRange?.startDate,
-          lte: dateRange?.endDate,
-        },
-      },
+      where: this.buildExpenseWhere(filters, { spentById: userId }),
       include: {
         category: true,
         group: true,
@@ -73,16 +102,10 @@ export class ExpenseService {
   async getExpensesByGroupId(
     groupId: string,
     currentUserId: string,
-    dateRange?: DateRangeDto,
+    filters?: ExpenseFilterQueryDto,
   ) {
     const expenses = await this.prisma.expense.findMany({
-      where: {
-        groupId,
-        createdAt: {
-          gte: dateRange?.startDate,
-          lte: dateRange?.endDate,
-        },
-      },
+      where: this.buildExpenseWhere(filters, { groupId }, true),
       include: {
         category: true,
         spentBy: true,
@@ -129,15 +152,12 @@ export class ExpenseService {
     return decoratedExpenses;
   }
 
-  async getExpenseByCategoryId(categoryId: string, dateRange?: DateRangeDto) {
+  async getExpenseByCategoryId(
+    categoryId: string,
+    filters?: ExpenseFilterQueryDto,
+  ) {
     return await this.prisma.expense.findMany({
-      where: {
-        categoryId,
-        createdAt: {
-          gte: dateRange?.startDate,
-          lte: dateRange?.endDate,
-        },
-      },
+      where: this.buildExpenseWhere(filters, { categoryId }),
     });
   }
 

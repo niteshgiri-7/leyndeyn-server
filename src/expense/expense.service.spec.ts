@@ -3,7 +3,7 @@ import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { ExpenseService } from "./expense.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateExpenseDto } from "./dto/create-expense.dto";
-import { DateRangeDto } from "./dto/date-range.dto";
+import { ExpenseFilterQueryDto } from "./dto/expense-filter-query.dto";
 import type { Expense, Category } from "../../generated/prisma/client/client";
 import { SplitStrategy } from "../../generated/prisma/client/enums";
 import { SplitStrategyFactory } from "./split/split-strategy.factory";
@@ -82,11 +82,14 @@ const makeMockExpense = (overrides: Partial<Expense> = {}): Expense => ({
 });
 
 type GroupExpenseResponse = {
-  paidBy: string;
+  paidBy: {
+    username: string;
+    avatarUrl?: string | null;
+  };
   paidAmount: number;
   cause: string;
   category: string;
-  oweAmount?: number;
+  netAmount: number;
   spentAt: Date;
 };
 
@@ -194,27 +197,69 @@ describe("ExpenseService", () => {
   });
 
   describe("getPersonalExpenses", () => {
-    it("should return personal expenses for a user", async () => {
+    it("should return personal expenses for a user with filters", async () => {
       const expenses = [makeMockExpense()];
       prismaExpense.findMany.mockResolvedValue(expenses);
+      const filters: ExpenseFilterQueryDto = {
+        description: "coffee",
+        categoryId: "category-1",
+        minAmount: 50,
+        maxAmount: 150,
+        startDate: "2024-01-01",
+        endDate: "2024-01-31",
+        spentById: "someone-else",
+      };
 
-      const result = await service.getPersonalExpenses("user-1");
+      const result = await service.getPersonalExpenses("user-1", filters);
 
-      expect(prismaExpense.findMany).toHaveBeenCalled();
+      expect(prismaExpense.findMany).toHaveBeenCalledWith({
+        where: {
+          spentById: "user-1",
+          groupId: null,
+          description: {
+            contains: "coffee",
+            mode: "insensitive",
+          },
+          categoryId: "category-1",
+          amount: {
+            gte: 50,
+            lte: 150,
+          },
+          createdAt: {
+            gte: "2024-01-01",
+            lte: "2024-01-31",
+          },
+        },
+        include: {
+          category: true,
+        },
+      });
       expect(result).toEqual(expenses);
     });
 
     it("should handle date range filtering", async () => {
       const expenses = [makeMockExpense()];
-      const dateRange: DateRangeDto = {
+      const filters: ExpenseFilterQueryDto = {
         startDate: "2024-01-01",
         endDate: "2024-01-31",
       };
       prismaExpense.findMany.mockResolvedValue(expenses);
 
-      await service.getPersonalExpenses("user-1", dateRange);
+      await service.getPersonalExpenses("user-1", filters);
 
-      expect(prismaExpense.findMany).toHaveBeenCalled();
+      expect(prismaExpense.findMany).toHaveBeenCalledWith({
+        where: {
+          spentById: "user-1",
+          groupId: null,
+          createdAt: {
+            gte: "2024-01-01",
+            lte: "2024-01-31",
+          },
+        },
+        include: {
+          category: true,
+        },
+      });
     });
   });
 
@@ -231,15 +276,27 @@ describe("ExpenseService", () => {
 
     it("should handle date range for all expenses", async () => {
       const expenses = [makeMockExpense()];
-      const dateRange: DateRangeDto = {
+      const filters: ExpenseFilterQueryDto = {
         startDate: "2024-01-01",
         endDate: "2024-01-31",
       };
       prismaExpense.findMany.mockResolvedValue(expenses);
 
-      await service.getAllExpensesOfAUser("user-1", dateRange);
+      await service.getAllExpensesOfAUser("user-1", filters);
 
-      expect(prismaExpense.findMany).toHaveBeenCalled();
+      expect(prismaExpense.findMany).toHaveBeenCalledWith({
+        where: {
+          spentById: "user-1",
+          createdAt: {
+            gte: "2024-01-01",
+            lte: "2024-01-31",
+          },
+        },
+        include: {
+          category: true,
+          group: true,
+        },
+      });
     });
   });
 
@@ -249,6 +306,7 @@ describe("ExpenseService", () => {
         {
           ...makeMockExpense({
             description: "Coffee",
+            spentById: "payer-1",
           }),
           category: {
             name: "Food",
@@ -276,12 +334,39 @@ describe("ExpenseService", () => {
       ];
       prismaExpense.findMany.mockResolvedValue(expenses as any[]);
 
-      const result = await service.getExpensesByGroupId("group-1", "user-1");
+      const filters: ExpenseFilterQueryDto = {
+        description: "coffee",
+        categoryId: "category-1",
+        minAmount: 10,
+        maxAmount: 120,
+        startDate: "2024-01-01",
+        endDate: "2024-01-31",
+        spentById: "user-2",
+      };
+
+      const result = await service.getExpensesByGroupId(
+        "group-1",
+        "user-1",
+        filters,
+      );
 
       expect(prismaExpense.findMany).toHaveBeenCalledWith({
         where: {
           groupId: "group-1",
-          createdAt: { gte: undefined, lte: undefined },
+          description: {
+            contains: "coffee",
+            mode: "insensitive",
+          },
+          categoryId: "category-1",
+          amount: {
+            gte: 10,
+            lte: 120,
+          },
+          createdAt: {
+            gte: "2024-01-01",
+            lte: "2024-01-31",
+          },
+          spentById: "user-2",
         },
         include: {
           category: true,
@@ -295,11 +380,14 @@ describe("ExpenseService", () => {
       });
       expect(result).toEqual<GroupExpenseResponse[]>([
         {
-          paidBy: "payer-1",
+          paidBy: {
+            username: "payer-1",
+            avatarUrl: undefined,
+          },
           paidAmount: 100,
           cause: "Coffee",
           category: "Food",
-          oweAmount: 50,
+          netAmount: -50,
           spentAt: new Date("2024-01-10"),
         },
       ]);
@@ -310,13 +398,34 @@ describe("ExpenseService", () => {
     it("should return expenses for a category", async () => {
       const expenses = [makeMockExpense()];
       prismaExpense.findMany.mockResolvedValue(expenses);
+      const filters: ExpenseFilterQueryDto = {
+        description: "coffee",
+        minAmount: 75,
+        maxAmount: 125,
+        startDate: "2024-01-01",
+        endDate: "2024-01-31",
+      };
 
-      const result = await service.getExpenseByCategoryId("category-1");
+      const result = await service.getExpenseByCategoryId(
+        "category-1",
+        filters,
+      );
 
       expect(prismaExpense.findMany).toHaveBeenCalledWith({
         where: {
           categoryId: "category-1",
-          createdAt: { gte: undefined, lte: undefined },
+          description: {
+            contains: "coffee",
+            mode: "insensitive",
+          },
+          amount: {
+            gte: 75,
+            lte: 125,
+          },
+          createdAt: {
+            gte: "2024-01-01",
+            lte: "2024-01-31",
+          },
         },
       });
       expect(result).toEqual(expenses);
@@ -453,7 +562,11 @@ describe("ExpenseService", () => {
       });
       prismaExpense.update.mockResolvedValue(updated);
 
-      const result = await service.updateExpenseById("expense-1", updateDto);
+      const result = await service.updateExpenseById(
+        "expense-1",
+        updateDto,
+        "user-1",
+      );
 
       expect(prismaExpense.update).toHaveBeenCalledWith({
         where: { id: "expense-1" },
@@ -466,11 +579,15 @@ describe("ExpenseService", () => {
       prismaExpense.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.updateExpenseById("missing", {
-          amount: 150,
-          categoryId: "categoryaa-1",
-          description: "updated expense",
-        }),
+        service.updateExpenseById(
+          "missing",
+          {
+            amount: 150,
+            categoryId: "categoryaa-1",
+            description: "updated expense",
+          },
+          "user-1",
+        ),
       ).rejects.toThrow(NotFoundException);
       expect(prismaExpense.update).not.toHaveBeenCalled();
     });

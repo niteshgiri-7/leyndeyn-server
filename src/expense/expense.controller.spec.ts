@@ -4,7 +4,7 @@ import { ExpenseService } from "./expense.service";
 import { AuthGuard } from "../auth/guards/jwt-auth.guard";
 import { ManageExpenseGuard } from "./guard/manage-expense.guard";
 import { CreateExpenseDto } from "./dto/create-expense.dto";
-import { DateRangeDto } from "./dto/date-range.dto";
+import { ExpenseFilterQueryDto } from "./dto/expense-filter-query.dto";
 import type { Expense } from "../../generated/prisma/client/browser";
 import type { JwtPayload } from "../auth/jwt-payload.type";
 import { UpdateExpenseDto } from "./dto/update-expense.dto";
@@ -22,15 +22,15 @@ type ExpenseServiceMock = {
   createExpense: jest.Mock<Promise<Expense>, [CreateExpenseDto, string]>;
   getExpenseByCategoryId: jest.Mock<
     Promise<Expense[]>,
-    [string, DateRangeDto | undefined]
+    [string, ExpenseFilterQueryDto | undefined]
   >;
   getPersonalExpenses: jest.Mock<
     Promise<Expense[]>,
-    [string, DateRangeDto | undefined]
+    [string, ExpenseFilterQueryDto | undefined]
   >;
   getExpensesByGroupId: jest.Mock<
     Promise<GroupExpenseResponse[]>,
-    [string, string, DateRangeDto | undefined]
+    [string, string, ExpenseFilterQueryDto | undefined]
   >;
   updateExpenseById: jest.Mock<
     Promise<Expense>,
@@ -40,7 +40,7 @@ type ExpenseServiceMock = {
   getExpenseById: jest.Mock<Promise<Expense>, [string]>;
   getAllExpensesOfAUser: jest.Mock<
     Promise<Expense[]>,
-    [string, DateRangeDto | undefined]
+    [string, ExpenseFilterQueryDto | undefined]
   >;
 };
 
@@ -74,15 +74,15 @@ describe("ExpenseController", () => {
       createExpense: jest.fn<Promise<Expense>, [CreateExpenseDto, string]>(),
       getExpenseByCategoryId: jest.fn<
         Promise<Expense[]>,
-        [string, DateRangeDto | undefined]
+        [string, ExpenseFilterQueryDto | undefined]
       >(),
       getPersonalExpenses: jest.fn<
         Promise<Expense[]>,
-        [string, DateRangeDto | undefined]
+        [string, ExpenseFilterQueryDto | undefined]
       >(),
       getExpensesByGroupId: jest.fn<
         Promise<GroupExpenseResponse[]>,
-        [string, string, DateRangeDto | undefined]
+        [string, string, ExpenseFilterQueryDto | undefined]
       >(),
       updateExpenseById: jest.fn<
         Promise<Expense>,
@@ -92,7 +92,7 @@ describe("ExpenseController", () => {
       getExpenseById: jest.fn<Promise<Expense>, [string]>(),
       getAllExpensesOfAUser: jest.fn<
         Promise<Expense[]>,
-        [string, DateRangeDto | undefined]
+        [string, ExpenseFilterQueryDto | undefined]
       >(),
     };
 
@@ -149,13 +149,22 @@ describe("ExpenseController", () => {
   it("gets personal expenses", async () => {
     const expenses = [makeMockExpense()];
     expenseService.getPersonalExpenses.mockResolvedValue(expenses);
+    const filters: ExpenseFilterQueryDto = {
+      description: "coffee",
+      categoryId: "category-1",
+      minAmount: 50,
+      maxAmount: 150,
+      startDate: "2024-01-01",
+      endDate: "2024-01-31",
+      spentById: "other-user",
+    };
 
-    const result = await controller.getPersonalExpenses(mockUser);
+    const result = await controller.getPersonalExpenses(mockUser, filters);
 
     expect(result).toEqual(expenses);
     expect(expenseService.getPersonalExpenses).toHaveBeenCalledWith(
       mockUser.id,
-      undefined,
+      filters,
     );
   });
 
@@ -171,14 +180,27 @@ describe("ExpenseController", () => {
       },
     ];
     expenseService.getExpensesByGroupId.mockResolvedValue(expenses);
+    const filters: ExpenseFilterQueryDto = {
+      description: "coffee",
+      categoryId: "category-1",
+      minAmount: 10,
+      maxAmount: 100,
+      startDate: "2024-01-01",
+      endDate: "2024-01-31",
+      spentById: "user-2",
+    };
 
-    const result = await controller.getExpensesByGroupId(mockUser, "group-1");
+    const result = await controller.getExpensesByGroupId(
+      mockUser,
+      "group-1",
+      filters,
+    );
 
     expect(result).toEqual(expenses);
     expect(expenseService.getExpensesByGroupId).toHaveBeenCalledWith(
       "group-1",
       mockUser.id,
-      undefined,
+      filters,
     );
   });
 
@@ -194,12 +216,14 @@ describe("ExpenseController", () => {
     const result = await controller.updatePersonalExpense(
       "expense-1",
       updateDto,
+      mockUser,
     );
 
     expect(result).toEqual(updated);
     expect(expenseService.updateExpenseById).toHaveBeenCalledWith(
       "expense-1",
       updateDto,
+      mockUser.id,
     );
   });
 
@@ -224,13 +248,21 @@ describe("ExpenseController", () => {
   it("gets all expenses of a user", async () => {
     const expenses = [makeMockExpense()];
     expenseService.getAllExpensesOfAUser.mockResolvedValue(expenses);
+    const filters: ExpenseFilterQueryDto = {
+      description: "coffee",
+      categoryId: "category-1",
+      minAmount: 75,
+      maxAmount: 200,
+      startDate: "2024-01-01",
+      endDate: "2024-02-01",
+    };
 
-    const result = await controller.getAllExpensesOfAUser(mockUser);
+    const result = await controller.getAllExpensesOfAUser(mockUser, filters);
 
     expect(result).toEqual(expenses);
     expect(expenseService.getAllExpensesOfAUser).toHaveBeenCalledWith(
       mockUser.id,
-      undefined,
+      filters,
     );
   });
 });
