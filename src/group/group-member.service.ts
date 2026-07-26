@@ -84,7 +84,12 @@ export class GroupMemberService {
     });
   }
 
-  async changeMemberRole(groupId: string, memberId: string, role: GroupRole) {
+  async changeMemberRole(
+    groupId: string,
+    memberId: string,
+    role: GroupRole,
+    currentUserId: string,
+  ) {
     await this.validateGroupExists(groupId);
 
     const member = await this.prisma.groupMember.findUnique({
@@ -97,6 +102,9 @@ export class GroupMemberService {
     });
 
     if (!member) throw new NotFoundException("Member not found in the group");
+
+    if (memberId === currentUserId)
+      throw new ConflictException("Cannot change your own role");
 
     return await this.prisma.groupMember.update({
       where: {

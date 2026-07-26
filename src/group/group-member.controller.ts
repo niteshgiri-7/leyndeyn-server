@@ -13,6 +13,7 @@ import { ALLOW_NON_ADMIN } from "./decorator/allow-non-admin";
 import { CreateGroupMemberDto } from "./dto/create-group-member.dto";
 import { GroupMemberService } from "./group-member.service";
 import { GroupAdminGuard } from "./guard/group-admin.guard";
+import { CurrentUser } from "../auth/decorator/current-user.decorator";
 
 @UseGuards(AuthGuard, GroupAdminGuard)
 @Controller("group/:groupId/members")
@@ -50,11 +51,13 @@ export class GroupMemberController {
     @Param("groupId") groupId: string,
     @Param("memberId") memberId: string,
     @Body("role") role: GroupRole,
+    @CurrentUser("id") currentUserId: string,
   ) {
     return await this.groupMemberService.changeMemberRole(
       groupId,
       memberId,
       role,
+      currentUserId,
     );
   }
 }
