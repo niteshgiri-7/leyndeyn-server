@@ -4,7 +4,7 @@ import { GroupRole } from "../../../generated/prisma/client/enums";
 export class CreateGroupMemberDto {
   @IsNotEmpty()
   @IsString()
-  userId!: string;
+  email!: string;
 
   @IsEnum(GroupRole)
   @IsOptional()

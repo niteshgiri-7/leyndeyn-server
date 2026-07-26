@@ -56,8 +56,19 @@ export class UserRepository implements IRepository<
     });
   }
 
-  async validateUserExists(id: string) {
+  async validateUserExists(id: string, email?: string) {
+    if (email) {
+      const user = await this.prisma.user.findUnique({
+        where: {
+          email,
+        },
+      });
+      if (!user) throw new NotFoundException("User not found");
+      return user;
+    }
+
     const user = await this.findById(id);
     if (!user) throw new NotFoundException("User not found");
+    return user;
   }
 }

@@ -27,7 +27,7 @@ export class GroupMemberController {
   ) {
     return await this.groupMemberService.addMemberToGroup(
       groupId,
-      data.userId,
+      data.email,
       data.role,
     );
   }

@@ -14,14 +14,16 @@ export class GroupMemberService {
     private readonly userRepository: UserRepository,
   ) {}
 
-  async addMemberToGroup(groupId: string, userId: string, role?: GroupRole) {
+  async addMemberToGroup(groupId: string, email: string, role?: GroupRole) {
     await this.validateGroupExists(groupId);
-    await this.userRepository.validateUserExists(userId);
+    const user = await this.userRepository.validateUserExists("", email); //finding user by email
 
     const existingMember = await this.prisma.groupMember.findFirst({
       where: {
         groupId,
-        userId,
+        user: {
+          email,
+        },
       },
     });
 
@@ -31,7 +33,7 @@ export class GroupMemberService {
     return await this.prisma.groupMember.create({
       data: {
         groupId,
-        userId,
+        userId: user.id,
         role: role ?? "MEMBER",
       },
     });
