@@ -96,19 +96,34 @@ export class ExpenseService {
     if (!expenses || !expenses.length) return [];
 
     const decoratedExpenses = expenses.map((expense) => {
-      const myParticipants = expense.participants.find(
-        (p) => p.userId === currentUserId,
+      const isCurrentUserPayer = expense.spentById === currentUserId;
+
+      const myParticipant = expense.participants.find(
+        (participant) => participant.userId === currentUserId,
       );
+
+      const netAmount = isCurrentUserPayer
+        ? // if currentUser is payer then he should receive the sum of all other participant amounts
+          expense.participants
+            .filter((p) => p.userId !== currentUserId)
+            .reduce((sum, p) => sum + p.amount, 0)
+        : // if the currentUser is not the payer and is participant of the expense then he owes the amount.
+          myParticipant
+          ? -myParticipant.amount
+          : // if the currentUser is not the payer and is not participant of the expense then he owes nothing.
+            0;
+
       return {
-        paidBy: expense.spentBy.username,
+        paidBy: {
+          avatarUrl: expense.spentBy.avatarUrl,
+          username: expense.spentBy.username,
+        },
         paidAmount: expense.amount,
         cause: expense.description,
-        category: expense.category.name,
-        oweAmount: myParticipants?.amount,
+        netAmount,
         spentAt: expense.createdAt,
       };
     });
-
     return decoratedExpenses;
   }
 
