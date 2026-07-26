@@ -63,7 +63,9 @@ export class GroupMemberService {
       });
 
       if (existingFriendGroup?._count?.members === 2) {
-        throw new ConflictException("Friend group already exists");
+        throw new ConflictException(
+          "You and this person are already friends, so a 2-person group isn't needed — you can split expenses directly from your friendship. Add another member if you'd like to turn this into a group",
+        );
       }
     }
 
