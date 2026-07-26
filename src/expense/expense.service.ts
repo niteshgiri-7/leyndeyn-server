@@ -121,6 +121,9 @@ export class ExpenseService {
           },
         },
       },
+      orderBy: {
+        updatedAt: "desc",
+      },
     });
 
     if (!expenses || !expenses.length) return [];
