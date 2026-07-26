@@ -1,7 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { CategoryController } from "./category.controller";
 import { CategoryService } from "./category.service";
-import { CategoryScope, CreateCategoryDto } from "./dto/create-category.dto";
+import { CreateCategoryDto } from "./dto/create-category.dto";
 import { AuthGuard } from "../auth/guards/jwt-auth.guard";
 import { Category } from "../../generated/prisma/client/client";
 import type { JwtPayload } from "../auth/jwt-payload.type";
@@ -87,7 +87,6 @@ describe("CategoryController", () => {
         name: "Food",
         description: "Food expenses",
         ownerId: "user-uuid-1",
-        scope: CategoryScope.PERSONAL,
       };
       const created = makeMockCategory();
       categoryServiceMock.createPersonalCategory.mockResolvedValue(created);
@@ -106,7 +105,6 @@ describe("CategoryController", () => {
         name: "Transport",
         description: "Transport expenses",
         ownerId: "group-uuid-1",
-        scope: CategoryScope.GROUP,
       };
       categoryServiceMock.createGroupCategory.mockResolvedValue(
         makeMockCategory({ name: "Transport" }),
@@ -129,7 +127,6 @@ describe("CategoryController", () => {
         name: "Transport",
         description: "Transport expenses",
         ownerId: "user-uuid-1",
-        scope: CategoryScope.GROUP,
       };
       const updated = makeMockCategory({ name: "Transport" });
       categoryServiceMock.updateCategory.mockResolvedValue(updated);
@@ -149,7 +146,6 @@ describe("CategoryController", () => {
         name: "Transport",
         description: "Updated desc",
         ownerId: "user-uuid-1",
-        scope: CategoryScope.GROUP,
       };
       categoryServiceMock.updateCategory.mockResolvedValue(makeMockCategory());
 

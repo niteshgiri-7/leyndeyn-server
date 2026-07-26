@@ -7,7 +7,7 @@ import {
 import { CategoryService } from "./category.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { Category } from "../../generated/prisma/client/client";
-import { CategoryScope, CreateCategoryDto } from "./dto/create-category.dto";
+import { CreateCategoryDto } from "./dto/create-category.dto";
 
 // ─── Mock Factory ────────────────────────────────────────────────────────────
 
@@ -89,7 +89,6 @@ describe("CategoryService", () => {
       name: "Food",
       description: "Food expenses",
       ownerId: "user-uuid-1",
-      scope: CategoryScope.PERSONAL,
     };
 
     it("should create and return a category", async () => {
@@ -136,7 +135,6 @@ describe("CategoryService", () => {
       name: "Food",
       description: "Food expenses",
       ownerId: "group-uuid-1",
-      scope: CategoryScope.GROUP,
     };
 
     it("should create and return a category for admin", async () => {
@@ -195,7 +193,6 @@ describe("CategoryService", () => {
         name: "Transport",
         description: "Transport expenses",
         ownerId: "user-uuid-1",
-        scope: CategoryScope.PERSONAL,
       };
 
       const result = await service.updateCategory(
@@ -220,7 +217,6 @@ describe("CategoryService", () => {
             name: "Transport",
             description: "asdfasdf",
             ownerId: "user-uuid-1",
-            scope: CategoryScope.PERSONAL,
           },
           "non-existent-uuid",
           "user-uuid-1",
@@ -240,7 +236,6 @@ describe("CategoryService", () => {
             name: "Transport",
             description: "asdfasdf",
             ownerId: "group-uuid-1",
-            scope: CategoryScope.GROUP,
           },
           "category-uuid-1",
           "user-uuid-1",
@@ -299,6 +294,7 @@ describe("CategoryService", () => {
       );
 
       expect(prismaMock.category.findMany).toHaveBeenCalledWith({
+        include: { budgets: true },
         where: { userId: "user-uuid-1" },
       });
       expect(result).toEqual(categories);
