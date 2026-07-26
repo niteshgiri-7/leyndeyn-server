@@ -1,6 +1,8 @@
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
+  ArrayNotEmpty,
   IsDateString,
+  IsArray,
   IsOptional,
   IsString,
   Min,
@@ -37,6 +39,13 @@ export class ExpenseFilterQueryDto {
   endDate?: string;
 
   @IsOptional()
-  @IsString()
-  spentById?: string;
+  @Transform(({ value }): string[] | undefined => {
+    if (value == null) return value;
+
+    return Array.isArray(value) ? (value as string[]) : [String(value)];
+  })
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsString({ each: true })
+  spentById?: string[];
 }

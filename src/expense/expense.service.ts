@@ -70,8 +70,14 @@ export class ExpenseService {
       };
     }
 
-    if (allowSpentByFilter && filters?.spentById && where.spentById == null) {
-      where.spentById = filters.spentById;
+    if (
+      allowSpentByFilter &&
+      filters?.spentById?.length &&
+      where.spentById == null
+    ) {
+      where.spentById = {
+        in: filters.spentById,
+      };
     }
 
     return where;

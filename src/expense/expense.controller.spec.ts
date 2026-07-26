@@ -156,7 +156,7 @@ describe("ExpenseController", () => {
       maxAmount: 150,
       startDate: "2024-01-01",
       endDate: "2024-01-31",
-      spentById: "other-user",
+      spentById: ["other-user", "another-user"],
     };
 
     const result = await controller.getPersonalExpenses(mockUser, filters);
@@ -187,7 +187,7 @@ describe("ExpenseController", () => {
       maxAmount: 100,
       startDate: "2024-01-01",
       endDate: "2024-01-31",
-      spentById: "user-2",
+      spentById: ["user-2", "user-3"],
     };
 
     const result = await controller.getExpensesByGroupId(

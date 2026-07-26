@@ -207,7 +207,7 @@ describe("ExpenseService", () => {
         maxAmount: 150,
         startDate: "2024-01-01",
         endDate: "2024-01-31",
-        spentById: "someone-else",
+        spentById: ["someone-else", "another-user"],
       };
 
       const result = await service.getPersonalExpenses("user-1", filters);
@@ -341,7 +341,7 @@ describe("ExpenseService", () => {
         maxAmount: 120,
         startDate: "2024-01-01",
         endDate: "2024-01-31",
-        spentById: "user-2",
+        spentById: ["user-2", "user-3"],
       };
 
       const result = await service.getExpensesByGroupId(
@@ -366,7 +366,9 @@ describe("ExpenseService", () => {
             gte: "2024-01-01",
             lte: "2024-01-31",
           },
-          spentById: "user-2",
+          spentById: {
+            in: ["user-2", "user-3"],
+          },
         },
         include: {
           category: true,
