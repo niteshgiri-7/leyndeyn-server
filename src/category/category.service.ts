@@ -86,7 +86,7 @@ export class CategoryService {
   }
 
   async updateCategory(
-    data: CreateCategoryDto,
+    data: Partial<CreateCategoryDto>,
     categoryId: string,
     userId: string,
   ) {

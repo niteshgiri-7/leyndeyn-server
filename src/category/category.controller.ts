@@ -53,7 +53,7 @@ export class CategoryController {
   @Put(":categoryId")
   async updateCategory(
     @Param("categoryId", ParseUUIDPipe) categoryId: string,
-    @Body() data: CreateCategoryDto,
+    @Body() data: Partial<CreateCategoryDto>,
     @CurrentUser() user: JwtPayload,
   ) {
     return await this.categoryService.updateCategory(
