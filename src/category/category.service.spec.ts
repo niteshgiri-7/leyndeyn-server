@@ -152,7 +152,11 @@ describe("CategoryService", () => {
       );
 
       expect(prismaMock.category.create).toHaveBeenCalledWith({
-        data: createInput,
+        data: {
+          name: createInput.name,
+          description: createInput.description,
+          groupId: createInput.ownerId,
+        },
       });
       expect(result).toEqual(expected);
     });
@@ -203,7 +207,10 @@ describe("CategoryService", () => {
 
       expect(prismaMock.category.update).toHaveBeenCalledWith({
         where: { id: "category-uuid-1" },
-        data: updateData,
+        data: {
+          name: updateData.name,
+          description: updateData.description,
+        },
       });
       expect(result).toEqual(updated);
     });

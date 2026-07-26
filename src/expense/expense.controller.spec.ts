@@ -3,7 +3,7 @@ import { ExpenseController } from "./expense.controller";
 import { ExpenseService } from "./expense.service";
 import { AuthGuard } from "../auth/guards/jwt-auth.guard";
 import { ManageExpenseGuard } from "./guard/manage-expense.guard";
-import { CreateExpenseDto, ExpenseScope } from "./dto/create-expense.dto";
+import { CreateExpenseDto } from "./dto/create-expense.dto";
 import { DateRangeDto } from "./dto/date-range.dto";
 import type { Expense } from "../../generated/prisma/client/browser";
 import type { JwtPayload } from "../auth/jwt-payload.type";
@@ -120,7 +120,6 @@ describe("ExpenseController", () => {
       amount: 100,
       description: "Coffee",
       categoryId: "category-1",
-      scope: ExpenseScope.PERSONAL,
     };
     const created = makeMockExpense();
     expenseService.createExpense.mockResolvedValue(created);

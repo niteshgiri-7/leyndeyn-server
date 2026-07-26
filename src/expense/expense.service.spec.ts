@@ -2,14 +2,14 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { ExpenseService } from "./expense.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { CreateExpenseDto, ExpenseScope } from "./dto/create-expense.dto";
+import { CreateExpenseDto } from "./dto/create-expense.dto";
 import { DateRangeDto } from "./dto/date-range.dto";
 import type { Expense, Category } from "../../generated/prisma/client/client";
 import { SplitStrategy } from "../../generated/prisma/client/enums";
 import { SplitStrategyFactory } from "./split/split-strategy.factory";
 import { UpdateExpenseDto } from "./dto/update-expense.dto";
 
-type ExpenseFindUniqueResult = Expense | { category: { scope: string } };
+type ExpenseFindUniqueResult = Expense;
 
 type PrismaExpenseMock = {
   findUnique: jest.Mock<Promise<ExpenseFindUniqueResult | null>, [unknown]>;
@@ -28,13 +28,13 @@ type PrismaExpenseMock = {
 type PrismaCategoryMock = {
   findUnique: jest.Mock<
     Promise<Category | null>,
-    [{ where: { id: string }; select: { scope: true } }]
+    [{ where: { id: string }; select: { groupId: true } }]
   >;
 };
 
 type PrismaExpenseParticipantMock = {
-  createMany: jest.Mock<
-    Promise<{ count: number }>,
+  createManyAndReturn: jest.Mock<
+    Promise<Array<{ expenseId: string; userId: string; amount: number }>>,
     [{ data: Array<{ expenseId: string; userId: string; amount: number }> }]
   >;
   updateMany: jest.Mock<
@@ -116,13 +116,13 @@ describe("ExpenseService", () => {
     prismaCategory = {
       findUnique: jest.fn<
         Promise<Category | null>,
-        [{ where: { id: string }; select: { scope: true } }]
+        [{ where: { id: string }; select: { groupId: true } }]
       >(),
     };
 
     prismaExpenseParticipant = {
-      createMany: jest.fn<
-        Promise<{ count: number }>,
+      createManyAndReturn: jest.fn<
+        Promise<Array<{ expenseId: string; userId: string; amount: number }>>,
         [{ data: Array<{ expenseId: string; userId: string; amount: number }> }]
       >(),
       updateMany: jest.fn<
@@ -329,7 +329,6 @@ describe("ExpenseService", () => {
         amount: 100,
         description: "Coffee",
         categoryId: "category-1",
-        scope: ExpenseScope.PERSONAL,
         splitStrategy: SplitStrategy.NONE,
         participants: [
           {
@@ -339,7 +338,13 @@ describe("ExpenseService", () => {
       };
       const created = makeMockExpense();
       prismaExpense.create.mockResolvedValue(created);
-      prismaExpenseParticipant.createMany.mockResolvedValue({ count: 1 });
+      prismaExpenseParticipant.createManyAndReturn.mockResolvedValue([
+        {
+          expenseId: created.id,
+          userId: "user-2",
+          amount: 50,
+        },
+      ]);
       const result = await service.createExpense(dto, "user-1");
 
       expect(prismaExpense.create).toHaveBeenCalledWith({
@@ -351,7 +356,13 @@ describe("ExpenseService", () => {
           splitStrategy: SplitStrategy.NONE,
         },
       });
-      expect(result).toEqual({ count: 1 });
+      expect(result).toEqual([
+        {
+          expenseId: created.id,
+          userId: "user-2",
+          amount: 50,
+        },
+      ]);
     });
 
     it("should create a non-personal expense with participants", async () => {
@@ -359,7 +370,6 @@ describe("ExpenseService", () => {
         amount: 100,
         description: "Dinner",
         categoryId: "category-1",
-        scope: ExpenseScope.GROUP,
         splitStrategy: SplitStrategy.EQUAL,
         participants: [
           {
@@ -369,7 +379,13 @@ describe("ExpenseService", () => {
       };
       const created = makeMockExpense({ splitStrategy: SplitStrategy.EQUAL });
       prismaExpense.create.mockResolvedValue(created);
-      prismaExpenseParticipant.createMany.mockResolvedValue({ count: 1 });
+      prismaExpenseParticipant.createManyAndReturn.mockResolvedValue([
+        {
+          expenseId: created.id,
+          userId: "user-2",
+          amount: 50,
+        },
+      ]);
 
       const result = await service.createExpense(dto, "user-1");
 
@@ -385,16 +401,24 @@ describe("ExpenseService", () => {
       expect(splitStrategyFactory.getStrategy).toHaveBeenCalledWith(
         SplitStrategy.EQUAL,
       );
-      expect(prismaExpenseParticipant.createMany).toHaveBeenCalledWith({
-        data: [
-          {
-            expenseId: created.id,
-            userId: "user-2",
-            amount: 50,
-          },
-        ],
-      });
-      expect(result).toEqual({ count: 1 });
+      expect(prismaExpenseParticipant.createManyAndReturn).toHaveBeenCalledWith(
+        {
+          data: [
+            {
+              expenseId: created.id,
+              userId: "user-2",
+              amount: 50,
+            },
+          ],
+        },
+      );
+      expect(result).toEqual([
+        {
+          expenseId: created.id,
+          userId: "user-2",
+          amount: 50,
+        },
+      ]);
     });
 
     it("should require split strategy for non-personal expense", async () => {
@@ -402,7 +426,6 @@ describe("ExpenseService", () => {
         amount: 100,
         description: "Dinner",
         categoryId: "category-1",
-        scope: ExpenseScope.GROUP,
         participants: [
           {
             participantId: "user-2",
@@ -426,9 +449,7 @@ describe("ExpenseService", () => {
       };
       const updated = makeMockExpense({ amount: 150 });
       prismaExpense.findUnique.mockResolvedValue({
-        category: {
-          scope: "PERSONAL",
-        },
+        ...makeMockExpense(),
       });
       prismaExpense.update.mockResolvedValue(updated);
 
