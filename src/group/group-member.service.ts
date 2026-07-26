@@ -16,24 +16,22 @@ export class GroupMemberService {
 
   async addMemberToGroup(
     groupId: string,
-    email: string,
+    emailOrEmails: string | string[],
     currentUserId: string,
     role?: GroupRole,
   ) {
     await this.validateGroupExists(groupId);
-    const user = await this.userRepository.validateUserExists("", email); //finding user by email
 
-    const existingMember = await this.prisma.groupMember.findFirst({
-      where: {
-        groupId,
-        user: {
-          email,
-        },
-      },
-    });
+    const emails = Array.isArray(emailOrEmails)
+      ? emailOrEmails
+      : [emailOrEmails];
+    const uniqueEmails = [...new Set(emails)];
 
-    if (existingMember)
-      throw new ConflictException("User is already a member of the group");
+    const users = await Promise.all(
+      uniqueEmails.map((email) =>
+        this.userRepository.validateUserExists("", email),
+      ),
+    );
 
     const groupWithMembers = await this.prisma.group.findUnique({
       where: { id: groupId },
@@ -44,7 +42,10 @@ export class GroupMemberService {
       },
     });
 
-    if (groupWithMembers?._count?.members === 1) {
+    const currentMemberCount = groupWithMembers?._count?.members ?? 0;
+
+    if (currentMemberCount === 1 && users.length === 1) {
+      const user = users[0];
       const existingFriendGroup = await this.prisma.group.findFirst({
         where: {
           members: {
@@ -69,13 +70,33 @@ export class GroupMemberService {
       }
     }
 
-    return await this.prisma.groupMember.create({
-      data: {
-        groupId,
-        userId: user.id,
-        role: role ?? "MEMBER",
-      },
-    });
+    const results = [];
+    for (const user of users) {
+      const existingMember = await this.prisma.groupMember.findFirst({
+        where: {
+          groupId,
+          user: {
+            email: user.email,
+          },
+        },
+      });
+
+      if (existingMember)
+        throw new ConflictException(
+          `User ${user.email} is already a member of the group`,
+        );
+
+      const created = await this.prisma.groupMember.create({
+        data: {
+          groupId,
+          userId: user.id,
+          role: role ?? "MEMBER",
+        },
+      });
+      results.push(created);
+    }
+
+    return Array.isArray(emailOrEmails) ? results : results[0];
   }
 
   async removeMemberFromGroup(groupId: string, userId: string) {
