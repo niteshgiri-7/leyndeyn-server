@@ -71,7 +71,7 @@ export class GroupMemberService {
     }
 
     const results: Array<
-      Awaited<ReturnType<typeof this.prisma.groupMember.create>>
+      Awaited<ReturnType<PrismaService["groupMember"]["create"]>>
     > = [];
     for (const user of users) {
       const existingMember = await this.prisma.groupMember.findFirst({
