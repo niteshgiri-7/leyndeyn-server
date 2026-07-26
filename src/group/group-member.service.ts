@@ -14,7 +14,12 @@ export class GroupMemberService {
     private readonly userRepository: UserRepository,
   ) {}
 
-  async addMemberToGroup(groupId: string, email: string, role?: GroupRole) {
+  async addMemberToGroup(
+    groupId: string,
+    email: string,
+    currentUserId: string,
+    role?: GroupRole,
+  ) {
     await this.validateGroupExists(groupId);
     const user = await this.userRepository.validateUserExists("", email); //finding user by email
 
@@ -29,6 +34,38 @@ export class GroupMemberService {
 
     if (existingMember)
       throw new ConflictException("User is already a member of the group");
+
+    const groupWithMembers = await this.prisma.group.findUnique({
+      where: { id: groupId },
+      include: {
+        _count: {
+          select: { members: true },
+        },
+      },
+    });
+
+    if (groupWithMembers?._count?.members === 1) {
+      const existingFriendGroup = await this.prisma.group.findFirst({
+        where: {
+          members: {
+            every: {
+              userId: {
+                in: [currentUserId, user.id],
+              },
+            },
+          },
+        },
+        include: {
+          _count: {
+            select: { members: true },
+          },
+        },
+      });
+
+      if (existingFriendGroup?._count?.members === 2) {
+        throw new ConflictException("Friend group already exists");
+      }
+    }
 
     return await this.prisma.groupMember.create({
       data: {

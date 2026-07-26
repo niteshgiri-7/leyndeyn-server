@@ -470,7 +470,17 @@ describe("GroupService", () => {
         userId,
         role: GroupRole.MEMBER,
       };
-      prismaGroup.findUnique.mockResolvedValue(group);
+      prismaGroup.findUnique.mockImplementation(
+        (args: { where: { invitationCode?: string; id?: string } }) => {
+          if (args.where?.invitationCode) return Promise.resolve(group);
+          if (args.where?.id)
+            return Promise.resolve({
+              ...group,
+              members: [{ userId: "other" }, { userId: "other2" }],
+            });
+          return Promise.resolve(null);
+        },
+      );
       prismaGroupMember.findFirst.mockResolvedValue(null);
       prismaGroupMember.create.mockResolvedValue(createdMember);
 
@@ -493,6 +503,28 @@ describe("GroupService", () => {
           role: GroupRole.MEMBER,
         },
       });
+    });
+
+    it("should throw ConflictException when a friend group already exists between the two users", async () => {
+      prismaGroup.findUnique.mockImplementation(
+        (args: { where: { invitationCode?: string; id?: string } }) => {
+          if (args.where?.invitationCode) return Promise.resolve(group);
+          if (args.where?.id)
+            return Promise.resolve({
+              ...group,
+              members: [{ userId: "existing-member" }],
+            });
+          return Promise.resolve(null);
+        },
+      );
+      prismaGroupMember.findFirst.mockResolvedValue(null);
+      prismaGroup.findFirst.mockResolvedValue({ _count: { members: 2 } });
+
+      await expect(
+        service.joinGroupViaInvitationCode(invitationCode, userId),
+      ).rejects.toThrow(new ConflictException("Friend group already exists"));
+
+      expect(prismaGroupMember.create).not.toHaveBeenCalled();
     });
   });
 });

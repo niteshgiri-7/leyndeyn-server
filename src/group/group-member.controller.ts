@@ -14,6 +14,7 @@ import { CreateGroupMemberDto } from "./dto/create-group-member.dto";
 import { GroupMemberService } from "./group-member.service";
 import { GroupAdminGuard } from "./guard/group-admin.guard";
 import { CurrentUser } from "../auth/decorator/current-user.decorator";
+import type { JwtPayload } from "../auth/jwt-payload.type";
 
 @UseGuards(AuthGuard, GroupAdminGuard)
 @Controller("group/:groupId/members")
@@ -24,10 +25,12 @@ export class GroupMemberController {
   async addMemberToGroup(
     @Body() data: CreateGroupMemberDto,
     @Param("groupId") groupId: string,
+    @CurrentUser() user: JwtPayload,
   ) {
     return await this.groupMemberService.addMemberToGroup(
       groupId,
       data.email,
+      user.id,
       data.role,
     );
   }

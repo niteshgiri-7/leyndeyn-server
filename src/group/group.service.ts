@@ -283,6 +283,36 @@ export class GroupService {
     if (existingMember)
       throw new ConflictException("You are already a member of this group");
 
+    const groupWithMembers = await this.prisma.group.findUnique({
+      where: { id: group.id },
+      include: { members: true },
+    });
+
+    if (groupWithMembers?.members.length === 1) {
+      const existingMemberId = groupWithMembers.members[0].userId;
+
+      const existingFriendGroup = await this.prisma.group.findFirst({
+        where: {
+          members: {
+            every: {
+              userId: {
+                in: [existingMemberId, userId],
+              },
+            },
+          },
+        },
+        include: {
+          _count: {
+            select: { members: true },
+          },
+        },
+      });
+
+      if (existingFriendGroup?._count?.members === 2) {
+        throw new ConflictException("Friend group already exists");
+      }
+    }
+
     return await this.prisma.groupMember.create({
       data: {
         groupId: group.id,
