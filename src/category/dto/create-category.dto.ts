@@ -1,9 +1,4 @@
-import { IsEnum, IsNotEmpty, IsString, MaxLength } from "class-validator";
-
-export enum CategoryScope {
-  PERSONAL,
-  GROUP,
-}
+import { IsNotEmpty, IsString, MaxLength } from "class-validator";
 export class CreateCategoryDto {
   @IsString()
   @IsNotEmpty()
@@ -14,9 +9,6 @@ export class CreateCategoryDto {
   @IsNotEmpty()
   @MaxLength(50)
   description!: string;
-
-  @IsEnum(CategoryScope)
-  scope!: CategoryScope;
 
   @IsString()
   @IsNotEmpty()

@@ -220,6 +220,9 @@ export class CategoryService {
         where: {
           userId: ownerId,
         },
+        include: {
+          budgets: true,
+        },
       });
     }
 
@@ -230,6 +233,9 @@ export class CategoryService {
     return await this.prismaService.category.findMany({
       where: {
         groupId: ownerId,
+      },
+      include: {
+        budgets: true,
       },
     });
   }
