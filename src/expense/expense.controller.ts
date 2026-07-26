@@ -48,8 +48,13 @@ export class ExpenseController {
   async updatePersonalExpense(
     @Param("expenseId", ParseUUIDPipe) expenseId: string,
     @Body() data: UpdateExpenseDto,
+    @CurrentUser() user: JwtPayload,
   ) {
-    return await this.expenseService.updateExpenseById(expenseId, data);
+    return await this.expenseService.updateExpenseById(
+      expenseId,
+      data,
+      user.id,
+    );
   }
 
   //Group
@@ -70,8 +75,13 @@ export class ExpenseController {
     @Param("expenseId", ParseUUIDPipe) expenseId: string,
     @Param("groupId", ParseUUIDPipe) _groupId: string,
     @Body() data: UpdateExpenseDto,
+    @CurrentUser() user: JwtPayload,
   ) {
-    return await this.expenseService.updateExpenseById(expenseId, data);
+    return await this.expenseService.updateExpenseById(
+      expenseId,
+      data,
+      user.id,
+    );
   }
 
   @CheckAccess("group")

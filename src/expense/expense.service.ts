@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -241,7 +242,11 @@ export class ExpenseService {
     return participants;
   }
 
-  async updateExpenseById(expenseId: string, data: UpdateExpenseDto) {
+  async updateExpenseById(
+    expenseId: string,
+    data: UpdateExpenseDto,
+    currentUserId: string,
+  ) {
     return await this.prisma.$transaction(async (prisma) => {
       const existingExpense = await prisma.expense.findUnique({
         where: {
@@ -250,6 +255,9 @@ export class ExpenseService {
       });
 
       if (!existingExpense) throw new NotFoundException("Expense not found");
+
+      if (existingExpense.spentById !== currentUserId)
+        throw new ForbiddenException("Only the payer can update the expense");
 
       const updatedExpense = await prisma.expense.update({
         where: {
