@@ -122,6 +122,7 @@ export class ExpenseService {
         cause: expense.description,
         netAmount,
         spentAt: expense.createdAt,
+        category: expense.category.name,
       };
     });
     return decoratedExpenses;
