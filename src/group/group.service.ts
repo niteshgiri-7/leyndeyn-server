@@ -80,6 +80,12 @@ export class GroupService {
         allowMembersToInvite: data.allowMembersToInvite,
         allowMembersToManageCategory: data.allowMembersToManageCategory,
         invitationCode,
+        category: {
+          create: {
+            name: "misc",
+            description: "Miscellaneous",
+          },
+        },
         members: {
           createMany: {
             data: [
@@ -137,6 +143,12 @@ export class GroupService {
       data: {
         name: "",
         invitationCode,
+        category: {
+          create: {
+            name: "misc",
+            description: "Miscellaneous",
+          },
+        },
         members: {
           createMany: {
             data: [

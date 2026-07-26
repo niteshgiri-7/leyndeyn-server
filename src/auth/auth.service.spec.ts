@@ -161,6 +161,12 @@ describe("AuthService", () => {
       ).mock.calls;
       expect(createCalls[0][0].email).toBe("user@test.com");
       expect(createCalls[0][0].username).toBe("user");
+      expect(createCalls[0][0].category).toEqual({
+        create: {
+          name: "misc",
+          description: "Miscellaneous",
+        },
+      });
       expect(createCalls[0][0].passwordHash).not.toBe("pass1234");
       expect(createCalls[0][0].passwordHash).toMatch(/^\$2[ab]\$\d+\$/);
 

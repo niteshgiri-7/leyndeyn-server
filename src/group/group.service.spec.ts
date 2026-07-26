@@ -113,6 +113,12 @@ describe("GroupService", () => {
       const createCall = prismaGroup.create.mock.calls[0] as unknown[];
       const createPayload = createCall[0] as {
         data: {
+          category: {
+            create: {
+              name: string;
+              description: string;
+            };
+          };
           members: {
             createMany: {
               data: Array<{ userId: string; role: GroupRole }>;
@@ -122,6 +128,12 @@ describe("GroupService", () => {
       };
 
       expect(createPayload).toBeDefined();
+      expect(createPayload.data.category).toEqual({
+        create: {
+          name: "misc",
+          description: "Miscellaneous",
+        },
+      });
       expect(createPayload.data.members.createMany.data).toEqual(
         expectedMemberData,
       );
@@ -175,6 +187,12 @@ describe("GroupService", () => {
         data: {
           name: string;
           invitationCode: string;
+          category: {
+            create: {
+              name: string;
+              description: string;
+            };
+          };
           members: {
             createMany: {
               data: Array<{ userId: string; role: GroupRole }>;
@@ -186,6 +204,12 @@ describe("GroupService", () => {
       expect(createPayload).toBeDefined();
       expect(createPayload.data.name).toBe("");
       expect(typeof createPayload.data.invitationCode).toBe("string");
+      expect(createPayload.data.category).toEqual({
+        create: {
+          name: "misc",
+          description: "Miscellaneous",
+        },
+      });
       expect(createPayload.data.members.createMany.data).toEqual([
         { userId, role: GroupRole.ADMIN },
         { userId: friend.id, role: GroupRole.ADMIN },

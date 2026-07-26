@@ -370,6 +370,9 @@ describe("ExpenseService", () => {
             in: ["user-2", "user-3"],
           },
         },
+        orderBy: {
+          updatedAt: "desc",
+        },
         include: {
           category: true,
           spentBy: true,

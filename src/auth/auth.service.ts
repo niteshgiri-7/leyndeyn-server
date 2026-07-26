@@ -64,6 +64,12 @@ export class AuthService {
       email,
       passwordHash: hashedPassword,
       username,
+      category: {
+        create: {
+          name: "misc",
+          description: "Miscellaneous",
+        },
+      },
     });
 
     const payload: JwtPayload = {
