@@ -518,7 +518,7 @@ describe("SettlementService", () => {
       });
 
       const owesYouItem = result.items.find(
-        (i) => i.settlementType === "GROUP_TRANSFER",
+        (i) => i.settlementType === "OWES_YOU",
       );
       expect(owesYouItem).toMatchObject({
         type: "group",

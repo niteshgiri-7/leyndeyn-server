@@ -325,7 +325,7 @@ export class SettlementService {
         this.splitBalancesToDebtorAndCreditor(balances);
       const settlements = this.simplifyDebts(debtors, creditors);
 
-      const isFriendGroup = group.members.length === 2 && group.name === "";
+      const isFriendGroup = group.members.length === 2;
 
       for (const s of settlements) {
         if (s.from.userId !== userId && s.to.userId !== userId) continue;
@@ -337,10 +337,10 @@ export class SettlementService {
             name: isFriendGroup ? s.to.username : group.name,
             type: isFriendGroup ? "friend" : "group",
             amount: s.amount,
-            settlementType: isFriendGroup ? "YOU_OWE" : "GROUP_TRANSFER",
+            settlementType: "YOU_OWE",
             groupName: isFriendGroup ? "Friend" : group.name,
-            fromUser: s.from.username,
-            toUser: s.to.username,
+            fromUser: isFriendGroup ? undefined : s.from.username,
+            toUser: isFriendGroup ? undefined : s.to.username,
           });
         } else if (s.to.userId === userId) {
           totalOwedToYou += s.amount;
@@ -349,10 +349,10 @@ export class SettlementService {
             name: isFriendGroup ? s.from.username : group.name,
             type: isFriendGroup ? "friend" : "group",
             amount: s.amount,
-            settlementType: isFriendGroup ? "OWES_YOU" : "GROUP_TRANSFER",
+            settlementType: "OWES_YOU",
             groupName: isFriendGroup ? "Friend" : group.name,
-            fromUser: s.from.username,
-            toUser: s.to.username,
+            fromUser: isFriendGroup ? undefined : s.from.username,
+            toUser: isFriendGroup ? undefined : s.to.username,
           });
         }
       }

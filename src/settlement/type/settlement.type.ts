@@ -36,8 +36,8 @@ export type DashboardSettlementItem = {
   name: string;
   type: "friend" | "group";
   amount: number;
-  settlementType: "YOU_OWE" | "OWES_YOU" | "GROUP_TRANSFER";
+  settlementType: "YOU_OWE" | "OWES_YOU";
   groupName: string;
-  fromUser: string;
-  toUser: string;
+  fromUser?: string;
+  toUser?: string;
 };
