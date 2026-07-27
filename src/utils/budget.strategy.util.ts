@@ -16,9 +16,11 @@ export const getBudgetProjection = (
 
   const dailyExpense = totalExpense / getNoOfDays(resetStrategy);
 
-  const projectedExpense = dailyExpense * getNoOfDays(resetStrategy);
+  const projectedExpense =
+    Math.round(dailyExpense * getNoOfDays(resetStrategy) * 100) / 100;
 
-  const expectedExpenseThisPeriod = dailyBudget * getNoOfDays(resetStrategy);
+  const expectedExpenseThisPeriod =
+    Math.round(dailyBudget * getNoOfDays(resetStrategy) * 100) / 100;
 
   const status: BudgetStatus =
     projectedExpense > totalBudget
