@@ -195,15 +195,14 @@ export class ExpenseService {
     return await this.prisma.$transaction(async (prisma) => {
       const chosenSplitStrategy = data.splitStrategy ?? SplitStrategy.NONE;
 
-      if (!data?.splitStrategy)
+      if (groupId && !data?.splitStrategy)
         throw new BadRequestException(
           "Split strategy is required for non personal expenses",
         );
 
-      // if groupId is passed then participants are required
-      if ((groupId && !data?.participants) || !data?.participants?.length)
+      if (groupId && !data?.participants?.length)
         throw new BadRequestException(
-          "Participants are required for non-personal expenses",
+          "Participants are required for non personal expenses",
         );
 
       if (groupId) {
@@ -230,7 +229,7 @@ export class ExpenseService {
       });
 
       const participants = this.resolveParticipantsForExpense({
-        participants: data.participants,
+        participants: data.participants!,
         splitStrategy: chosenSplitStrategy,
       });
 
