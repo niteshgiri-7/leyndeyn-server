@@ -111,6 +111,9 @@ export class ExpenseService {
   ) {
     const expenses = await this.prisma.expense.findMany({
       where: this.buildExpenseWhere(filters, {
+        spentById: {
+          not: userId,
+        },
         participants: {
           some: {
             userId,
