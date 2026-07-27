@@ -85,6 +85,11 @@ export class DashboardService {
         name: category.name,
         amount: this.round(totalExpenses),
         percentage: this.round(percentage),
+        type: category.groupId
+          ? category.group?._count?.members === 2
+            ? "friend"
+            : "group"
+          : "personal",
       };
 
       if (category.group) {

@@ -281,7 +281,15 @@ export class CategoryService {
       include: {
         budgets: true,
         expenses: true,
-        group: true,
+        group: {
+          include: {
+            _count: {
+              select: {
+                members: true,
+              },
+            },
+          },
+        },
       },
     });
 
