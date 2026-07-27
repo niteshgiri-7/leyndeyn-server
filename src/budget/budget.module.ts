@@ -7,5 +7,6 @@ import { CategoryModule } from "../category/category.module";
   imports: [CategoryModule],
   controllers: [BudgetController],
   providers: [BudgetService],
+  exports: [BudgetService],
 })
 export class BudgetModule {}

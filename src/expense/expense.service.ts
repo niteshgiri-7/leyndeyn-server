@@ -105,6 +105,23 @@ export class ExpenseService {
     });
   }
 
+  async getAllExpensesOfAUserAsParticipant(userId: string) {
+    const expenses = await this.prisma.expense.findMany({
+      where: {
+        participants: {
+          some: {
+            userId,
+          },
+        },
+      },
+      include: {
+        category: true,
+        group: true,
+      },
+    });
+    return expenses;
+  }
+
   async getExpensesByGroupId(
     groupId: string,
     currentUserId: string,

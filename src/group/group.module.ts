@@ -10,5 +10,6 @@ import { RepositoryModule } from "../repository/repository.module";
   imports: [RepositoryModule],
   controllers: [GroupController, GroupMemberController],
   providers: [GroupService, GroupMemberService, AuthGuard, GroupAdminGuard],
+  exports: [GroupService, GroupMemberService],
 })
 export class GroupModule {}

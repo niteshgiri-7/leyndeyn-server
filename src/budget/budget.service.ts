@@ -79,4 +79,49 @@ export class BudgetService {
       },
     });
   }
+
+  async getBudgetsForPersonalCategories(userId: string) {
+    const budgets = await this.prisma.budget.findMany({
+      where: {
+        category: {
+          userId,
+        },
+      },
+      include: {
+        category: {
+          include: {
+            expenses: true,
+            group: true,
+          },
+        },
+      },
+    });
+
+    return budgets;
+  }
+
+  async getBudgetsForAllTheGroups(userId: string) {
+    const budgets = await this.prisma.budget.findMany({
+      where: {
+        category: {
+          group: {
+            members: {
+              some: {
+                userId,
+              },
+            },
+          },
+        },
+      },
+      include: {
+        category: {
+          include: {
+            expenses: true,
+            group: true,
+          },
+        },
+      },
+    });
+    return budgets;
+  }
 }

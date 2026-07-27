@@ -97,3 +97,8 @@ npm run test:e2e
 # test coverage
 npm run test:cov
 ```
+
+- show my total expenses all over the groups,friends and personal for this week, this month filtered by category,group,friend
+- this also applies for the expenses where I am participant
+- show budget vs actual expense graph
+- show a graph based on budget and current expense so that user know if he is spending on balance and don't run out of budget at the end of month applies to both user and group.

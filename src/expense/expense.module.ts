@@ -17,5 +17,6 @@ import { ExactSplitStrategy } from "./split/exact-split.strategy";
     PercentageSplitStrategy,
     ExactSplitStrategy,
   ],
+  exports: [ExpenseService],
 })
 export class ExpenseModule {}

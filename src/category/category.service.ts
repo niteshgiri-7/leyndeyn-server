@@ -191,6 +191,7 @@ export class CategoryService {
         },
         include: {
           budgets: true,
+          expenses: true,
         },
       });
     }
@@ -205,6 +206,7 @@ export class CategoryService {
       },
       include: {
         budgets: true,
+        expenses: true,
       },
     });
   }
@@ -240,5 +242,30 @@ export class CategoryService {
       );
 
     return category;
+  }
+
+  async getPersonalCategories(userId: string) {
+    const personalCategories = await this.getAllCategories(userId, userId);
+    return personalCategories;
+  }
+
+  async getAllGroupsCategories(userId: string) {
+    const groupCategories = await this.prismaService.category.findMany({
+      where: {
+        group: {
+          members: {
+            some: {
+              userId,
+            },
+          },
+        },
+      },
+      include: {
+        budgets: true,
+        expenses: true,
+      },
+    });
+
+    return groupCategories;
   }
 }
