@@ -138,6 +138,7 @@ export class DashboardService {
       totalSpent: this.round(totalSpent),
       totalPersonalSpent: this.round(totalPersonalSpent),
       totalSplittedShare: this.round(totalSplittedShare),
+      totalSpentAsPayer: this.round(totalExpensesAsPayer),
     };
   }
 
