@@ -131,10 +131,17 @@ export class DashboardService {
       (total, expense) => total + expense.amount,
       0,
     );
+
     const totalSplittedShare = expensesAsParticipant.reduce(
-      (total, expense) => total + expense.amount,
+      (total, expense) =>
+        total +
+        expense.participants.reduce(
+          (total, participant) => total + participant.amount,
+          0,
+        ),
       0,
     );
+
     const totalExpensesAsPayer = expensesAsPayer.reduce(
       (total, expense) => total + expense.amount,
       0,

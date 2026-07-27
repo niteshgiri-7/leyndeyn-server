@@ -120,6 +120,14 @@ export class ExpenseService {
       include: {
         category: true,
         group: true,
+        participants: {
+          where: {
+            userId,
+          },
+          select: {
+            amount: true,
+          },
+        },
       },
     });
     return expenses;
