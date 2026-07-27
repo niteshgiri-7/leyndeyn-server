@@ -11,6 +11,7 @@ export interface CategorySummary {
   amount: number;
   percentage: number;
   groupName?: string;
+  type?: "personal" | "group" | "friend";
 }
 
 export type BudgetStatus = "ON_TRACK" | "OVER_BUDGET" | "UNDER_BUDGET";

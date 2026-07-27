@@ -89,6 +89,10 @@ export class DashboardService {
 
       if (category.group) {
         summary.groupName = category.group.name;
+        summary.type =
+          category.group._count?.members === 2 ? "friend" : "group";
+      } else {
+        summary.type = "personal";
       }
 
       return summary;

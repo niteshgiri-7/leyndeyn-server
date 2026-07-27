@@ -301,7 +301,13 @@ describe("CategoryService", () => {
       );
 
       expect(prismaMock.category.findMany).toHaveBeenCalledWith({
-        include: { budgets: true, expenses: true, group: true },
+        include: {
+          budgets: true,
+          expenses: true,
+          group: {
+            include: { _count: { select: { members: true } } },
+          },
+        },
         where: { userId: "user-uuid-1" },
       });
       expect(result).toEqual(categories);
