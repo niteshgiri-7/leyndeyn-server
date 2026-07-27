@@ -19,9 +19,14 @@ type PrismaExpenseSettlementMock = {
   update: jest.Mock<Promise<unknown>, [unknown]>;
 };
 
+type PrismaGroupMock = {
+  findMany: jest.Mock<Promise<unknown[]>, [unknown]>;
+};
+
 type PrismaServiceMock = {
   expense: PrismaExpenseMock;
   expenseSettlement: PrismaExpenseSettlementMock;
+  group: PrismaGroupMock;
 };
 
 const makeMockUser = (overrides: Record<string, unknown> = {}) => ({
@@ -78,6 +83,7 @@ describe("SettlementService", () => {
   let service: SettlementService;
   let prismaExpense: PrismaExpenseMock;
   let prismaExpenseSettlement: PrismaExpenseSettlementMock;
+  let prismaGroup: PrismaGroupMock;
 
   beforeEach(async () => {
     prismaExpense = {
@@ -91,6 +97,10 @@ describe("SettlementService", () => {
       update: jest.fn<Promise<unknown>, [unknown]>(),
     };
 
+    prismaGroup = {
+      findMany: jest.fn<Promise<unknown[]>, [unknown]>(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SettlementService,
@@ -99,6 +109,7 @@ describe("SettlementService", () => {
           useValue: {
             expense: prismaExpense,
             expenseSettlement: prismaExpenseSettlement,
+            group: prismaGroup,
           } satisfies PrismaServiceMock,
         },
       ],
@@ -433,6 +444,87 @@ describe("SettlementService", () => {
         },
       });
       expect(result).toEqual(transactions);
+    });
+  });
+
+  describe("getUserBalances", () => {
+    it("should aggregate balances correctly for a user across friend and regular groups", async () => {
+      const mockGroups = [
+        {
+          id: "g-1",
+          name: "",
+          members: [{ userId: "user-1" }, { userId: "user-2" }],
+        },
+        {
+          id: "g-2",
+          name: "Trip",
+          members: [
+            { userId: "user-1" },
+            { userId: "user-3" },
+            { userId: "user-4" },
+          ],
+        },
+      ];
+
+      const mockExpenses = [
+        makeMockExpense({
+          id: "e-1",
+          groupId: "g-1",
+          spentById: "user-2",
+          participants: [
+            makeMockParticipant({
+              user: makeMockUser({ id: "user-1" }),
+              amount: 40,
+            }),
+          ],
+        }),
+        makeMockExpense({
+          id: "e-2",
+          groupId: "g-2",
+          spentById: "user-1",
+          participants: [
+            makeMockParticipant({
+              user: makeMockUser({ id: "user-3" }),
+              amount: 100,
+            }),
+          ],
+        }),
+      ];
+
+      prismaGroup.findMany.mockResolvedValue(mockGroups);
+      prismaExpense.findMany.mockResolvedValue(mockExpenses);
+      prismaExpenseSettlement.findMany.mockResolvedValue([]);
+
+      const result = await service.getUserBalances("user-1");
+
+      expect(prismaGroup.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { members: { some: { userId: "user-1" } } },
+        }),
+      );
+
+      expect(result.totalYouOwe).toBe(40);
+      expect(result.totalOwedToYou).toBe(100);
+      expect(result.netBalance).toBe(60);
+      expect(result.items).toHaveLength(2);
+
+      const youOweItem = result.items.find(
+        (i) => i.settlementType === "YOU_OWE",
+      );
+      expect(youOweItem).toMatchObject({
+        type: "friend",
+        amount: 40,
+        groupName: "Friend",
+      });
+
+      const owesYouItem = result.items.find(
+        (i) => i.settlementType === "GROUP_TRANSFER",
+      );
+      expect(owesYouItem).toMatchObject({
+        type: "group",
+        amount: 100,
+        groupName: "Trip",
+      });
     });
   });
 });
