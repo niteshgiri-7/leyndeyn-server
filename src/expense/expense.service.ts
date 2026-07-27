@@ -200,7 +200,8 @@ export class ExpenseService {
           "Split strategy is required for non personal expenses",
         );
 
-      if (!data?.participants || !data?.participants?.length)
+      // if groupId is passed then participants are required
+      if ((groupId && !data?.participants) || !data?.participants?.length)
         throw new BadRequestException(
           "Participants are required for non-personal expenses",
         );
