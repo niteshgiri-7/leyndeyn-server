@@ -69,6 +69,7 @@ export class SettlementService {
             participant.amount,
           userId: participant.user.id,
           avatarUrl: participant.user.avatarUrl,
+          username: participant.user.username,
         });
         //ones who are required to receive money(people in credit)
         //if the person who spent the money in this expense is a participant in other expenses, then
@@ -78,6 +79,7 @@ export class SettlementService {
             (balances.get(expense.spentById)?.amount ?? 0) + participant.amount,
           avatarUrl: expense.spentBy.avatarUrl,
           userId: expense.spentById,
+          username: expense.spentBy.username,
         });
       }
     }
@@ -92,6 +94,7 @@ export class SettlementService {
             settledExpense.amount,
           avatarUrl: settledExpense.fromUser.avatarUrl,
           userId: settledExpense.fromUserId,
+          username: settledExpense.fromUser.username,
         },
       );
       balances.set(settledExpense.toUserId, {
@@ -100,6 +103,7 @@ export class SettlementService {
           settledExpense.amount,
         avatarUrl: settledExpense.toUser.avatarUrl,
         userId: settledExpense.toUserId,
+        username: settledExpense.toUser.username,
       });
     }
 
@@ -116,18 +120,18 @@ export class SettlementService {
       if (balanceEntry.amount < 0) {
         debtors.push({
           user: {
-            avatarUrl: null,
+            avatarUrl: balanceEntry.avatarUrl,
             userId,
-            username: "",
+            username: balanceEntry.username,
           },
           amount: -balanceEntry.amount,
         });
       } else
         creditors.push({
           user: {
-            avatarUrl: null,
+            avatarUrl: balanceEntry.avatarUrl,
             userId,
-            username: "",
+            username: balanceEntry.username,
           },
           amount: balanceEntry.amount,
         });

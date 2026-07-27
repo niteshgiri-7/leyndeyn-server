@@ -29,16 +29,20 @@ type PrismaServiceMock = {
   group: PrismaGroupMock;
 };
 
-const makeMockUser = (overrides: Record<string, unknown> = {}) => ({
-  id: "user-1",
-  email: "user1@test.com",
-  username: "user1",
-  avatarUrl: null,
-  isVerified: true,
-  createdAt: new Date("2024-01-01"),
-  updatedAt: new Date("2024-01-01"),
-  ...overrides,
-});
+const makeMockUser = (overrides: Record<string, unknown> = {}) => {
+  const id = (overrides.id as string) ?? "user-1";
+  const num = id.split("-")[1] || "1";
+  return {
+    id,
+    email: `user${num}@test.com`,
+    username: (overrides.username as string) ?? `user${num}`,
+    avatarUrl: null,
+    isVerified: true,
+    createdAt: new Date("2024-01-01"),
+    updatedAt: new Date("2024-01-01"),
+    ...overrides,
+  };
+};
 
 const makeMockParticipant = (overrides: Record<string, unknown> = {}) => ({
   user: makeMockUser({ id: "user-2", username: "user2" }),
@@ -138,8 +142,8 @@ describe("SettlementService", () => {
 
       expect(result).toEqual([
         {
-          from: { userId: "user-2", username: "", avatarUrl: null },
-          to: { userId: "user-1", username: "", avatarUrl: null },
+          from: { userId: "user-2", username: "user2", avatarUrl: null },
+          to: { userId: "user-1", username: "user1", avatarUrl: null },
           amount: 50,
         },
       ]);
@@ -167,13 +171,13 @@ describe("SettlementService", () => {
 
       expect(result).toEqual([
         {
-          from: { userId: "user-2", username: "", avatarUrl: null },
-          to: { userId: "user-1", username: "", avatarUrl: null },
+          from: { userId: "user-2", username: "user2", avatarUrl: null },
+          to: { userId: "user-1", username: "user1", avatarUrl: null },
           amount: 25,
         },
         {
-          from: { userId: "user-3", username: "", avatarUrl: null },
-          to: { userId: "user-1", username: "", avatarUrl: null },
+          from: { userId: "user-3", username: "user3", avatarUrl: null },
+          to: { userId: "user-1", username: "user1", avatarUrl: null },
           amount: 25,
         },
       ]);
@@ -213,13 +217,13 @@ describe("SettlementService", () => {
 
       expect(result).toEqual([
         {
-          from: { userId: "user-3", username: "", avatarUrl: null },
-          to: { userId: "user-1", username: "", avatarUrl: null },
+          from: { userId: "user-3", username: "user3", avatarUrl: null },
+          to: { userId: "user-1", username: "user1", avatarUrl: null },
           amount: 50,
         },
         {
-          from: { userId: "user-2", username: "", avatarUrl: null },
-          to: { userId: "user-1", username: "", avatarUrl: null },
+          from: { userId: "user-2", username: "user2", avatarUrl: null },
+          to: { userId: "user-1", username: "user1", avatarUrl: null },
           amount: 20,
         },
       ]);
@@ -239,8 +243,8 @@ describe("SettlementService", () => {
 
       expect(result).toEqual([
         {
-          from: { userId: "user-2", username: "", avatarUrl: null },
-          to: { userId: "user-1", username: "", avatarUrl: null },
+          from: { userId: "user-2", username: "user2", avatarUrl: null },
+          to: { userId: "user-1", username: "user1", avatarUrl: null },
           amount: 30,
         },
       ]);
@@ -304,13 +308,13 @@ describe("SettlementService", () => {
 
       expect(result).toEqual([
         {
-          from: { userId: "user-3", username: "", avatarUrl: null },
-          to: { userId: "user-2", username: "", avatarUrl: null },
+          from: { userId: "user-3", username: "user3", avatarUrl: null },
+          to: { userId: "user-2", username: "user2", avatarUrl: null },
           amount: 20,
         },
         {
-          from: { userId: "user-3", username: "", avatarUrl: null },
-          to: { userId: "user-1", username: "", avatarUrl: null },
+          from: { userId: "user-3", username: "user3", avatarUrl: null },
+          to: { userId: "user-1", username: "user1", avatarUrl: null },
           amount: 10,
         },
       ]);

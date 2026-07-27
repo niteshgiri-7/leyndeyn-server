@@ -17,6 +17,7 @@ export type BalanceEntry = {
   userId: string;
   avatarUrl: string | null;
   amount: number;
+  username: string;
 };
 
 export interface IUser {
