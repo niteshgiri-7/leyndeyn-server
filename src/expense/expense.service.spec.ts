@@ -479,7 +479,7 @@ describe("ExpenseService", () => {
       prismaCategory.findUnique.mockResolvedValue({
         id: "category-1",
         groupId: "group-1",
-      } as any);
+      } as never);
       prismaExpense.create.mockResolvedValue(created);
       prismaExpenseParticipant.createManyAndReturn.mockResolvedValue([
         {

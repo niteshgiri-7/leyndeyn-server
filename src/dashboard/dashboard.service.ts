@@ -7,6 +7,8 @@ import { GroupService } from "../group/group.service";
 import { SettlementService } from "../settlement/settlement.service";
 import { getBudgetProjection } from "../utils/budget.strategy.util";
 import { Budgets, Categories, CategorySummary } from "./dashboard.type";
+import { DashboardFilterDto } from "./dto/dashboard-filter.dto";
+import { getRangeByPeriod, generateTrendIntervals } from "../utils/date.util";
 
 @Injectable()
 export class DashboardService {
@@ -18,6 +20,10 @@ export class DashboardService {
     private readonly categoryService: CategoryService,
   ) {}
 
+  private round(num: number) {
+    return Math.round(num * 100) / 100;
+  }
+
   async getAllCategories(userId: string) {
     const [personalCategories, groupCategories] = await Promise.all([
       this.categoryService.getPersonalCategories(userId),
@@ -27,31 +33,65 @@ export class DashboardService {
     return [...personalCategories, ...groupCategories];
   }
 
+  filterCategoriesByDate(
+    categories: Categories,
+    range: { start: Date; end: Date } | null,
+  ): Categories {
+    if (!range) return categories;
+    return categories.map((category) => ({
+      ...category,
+      expenses: category.expenses.filter(
+        (e) => e.createdAt >= range.start && e.createdAt <= range.end,
+      ),
+    }));
+  }
+
+  filterBudgetsByDate(
+    budgets: Budgets,
+    range: { start: Date; end: Date } | null,
+  ): Budgets {
+    if (!range) return budgets;
+    return budgets.map((budget) => ({
+      ...budget,
+      category: {
+        ...budget.category,
+        expenses: budget.category.expenses.filter(
+          (e) => e.createdAt >= range.start && e.createdAt <= range.end,
+        ),
+      },
+    }));
+  }
+
   getAllCategoriesSummary(categories: Categories): CategorySummary[] {
     const totalExpenseAcrossCategories = categories.reduce(
-      (total, amount) =>
+      (total, category) =>
         total +
-        amount.expenses.reduce((total, expense) => total + expense.amount, 0),
+        category.expenses.reduce((sum, expense) => sum + expense.amount, 0),
       0,
     );
 
     const categorySummary = categories.map((category) => {
-      const totalBudget = category.budgets.reduce(
-        (total, budget) => total + budget.amount,
-        0,
-      );
       const totalExpenses = category.expenses.reduce(
         (total, expense) => total + expense.amount,
         0,
       );
       const percentage =
-        totalBudget > 0 ? totalExpenses / totalExpenseAcrossCategories : 0;
-      return {
+        totalExpenseAcrossCategories > 0
+          ? (totalExpenses / totalExpenseAcrossCategories) * 100
+          : 0;
+
+      const summary: CategorySummary = {
         id: category.id,
         name: category.name,
-        amount: totalExpenses,
-        percentage,
+        amount: this.round(totalExpenses),
+        percentage: this.round(percentage),
       };
+
+      if (category.group) {
+        summary.groupName = category.group.name;
+      }
+
+      return summary;
     });
 
     return categorySummary;
@@ -64,12 +104,18 @@ export class DashboardService {
     return { friendGroups, allGroups };
   }
 
-  async getExpenseSummary(userId: string) {
+  async getExpenseSummary(
+    userId: string,
+    dateFilters?: { startDate?: string; endDate?: string },
+  ) {
     const [expensesAsPayer, expensesAsParticipant, personalExpenses] =
       await Promise.all([
-        this.expenseService.getAllExpensesOfAUser(userId),
-        this.expenseService.getAllExpensesOfAUserAsParticipant(userId),
-        this.expenseService.getPersonalExpenses(userId),
+        this.expenseService.getAllExpensesOfAUser(userId, dateFilters),
+        this.expenseService.getAllExpensesOfAUserAsParticipant(
+          userId,
+          dateFilters,
+        ),
+        this.expenseService.getPersonalExpenses(userId, dateFilters),
       ]);
 
     const totalPersonalSpent = personalExpenses.reduce(
@@ -89,21 +135,24 @@ export class DashboardService {
       totalPersonalSpent + totalSplittedShare + totalExpensesAsPayer;
 
     return {
-      totalSpent,
-      totalPersonalSpent,
-      totalSplittedShare,
+      totalSpent: this.round(totalSpent),
+      totalPersonalSpent: this.round(totalPersonalSpent),
+      totalSplittedShare: this.round(totalSplittedShare),
     };
   }
 
   generateBudgetOverview(
     budgets: Budgets,
+    range: { start: Date; end: Date } | null,
     strategy: BudgetResetStrategy = "MONTHLY",
   ) {
-    const totalBudget = budgets.reduce(
+    const filteredBudgets = this.filterBudgetsByDate(budgets, range);
+
+    const totalBudget = filteredBudgets.reduce(
       (total, budget) => total + budget.amount,
       0,
     );
-    const totalExpense = budgets.reduce(
+    const totalExpense = filteredBudgets.reduce(
       (total, budget) =>
         total +
         budget.category.expenses.reduce(
@@ -120,65 +169,163 @@ export class DashboardService {
       strategy,
     );
 
-    const budgetOverviews = budgets.map((budget) => {
-      const totalBudget = budget.amount;
-      const totalExpense = budget.category.expenses.reduce(
+    const overallTrendIntervals = range
+      ? generateTrendIntervals(range.start, range.end, strategy)
+      : [];
+    let overallCumulativeTarget = 0;
+    let overallCumulativeActual = 0;
+    const overallTargetPerInterval =
+      overallTrendIntervals.length > 0
+        ? totalBudget / overallTrendIntervals.length
+        : 0;
+
+    const overallTrendPoints = overallTrendIntervals.map((interval) => {
+      overallCumulativeTarget += overallTargetPerInterval;
+
+      let actualInInterval = 0;
+      budgets.forEach((b) => {
+        const expensesInInterval = b.category.expenses.filter(
+          (e) => e.createdAt >= interval.start && e.createdAt <= interval.end,
+        );
+        actualInInterval += expensesInInterval.reduce(
+          (sum, e) => sum + e.amount,
+          0,
+        );
+      });
+      overallCumulativeActual += actualInInterval;
+
+      return {
+        label: interval.label,
+        targetCumulative: this.round(overallCumulativeTarget),
+        actualCumulative: this.round(overallCumulativeActual),
+      };
+    });
+
+    const budgetOverviews = filteredBudgets.map((budget) => {
+      const budgetAmount = budget.amount;
+      const budgetExpense = budget.category.expenses.reduce(
         (total, expense) => total + expense.amount,
         0,
       );
-      const remainingBudget = totalBudget - totalExpense;
+      const remainingBudget = budgetAmount - budgetExpense;
       const categoryName = budget.category.name;
       const categoryId = budget.category.id;
       const groupId = budget.category?.groupId;
       const groupName = budget.category?.group?.name;
       const percentageUsed =
-        totalBudget > 0 ? (totalExpense / totalBudget) * 100 : 0;
+        budgetAmount > 0 ? (budgetExpense / budgetAmount) * 100 : 0;
+
+      const trendIntervals = range
+        ? generateTrendIntervals(range.start, range.end, budget.resetStrategy)
+        : [];
+      let cumulativeTarget = 0;
+      let cumulativeActual = 0;
+      const targetPerInterval =
+        trendIntervals.length > 0 ? budgetAmount / trendIntervals.length : 0;
+
+      const trendPoints = trendIntervals.map((interval) => {
+        cumulativeTarget += targetPerInterval;
+
+        const originalBudget = budgets.find((b) => b.id === budget.id);
+        const expensesInInterval = originalBudget
+          ? originalBudget.category.expenses.filter(
+              (e) =>
+                e.createdAt >= interval.start && e.createdAt <= interval.end,
+            )
+          : [];
+        const actualInInterval = expensesInInterval.reduce(
+          (sum, e) => sum + e.amount,
+          0,
+        );
+        cumulativeActual += actualInInterval;
+
+        return {
+          label: interval.label,
+          targetCumulative: this.round(cumulativeTarget),
+          actualCumulative: this.round(cumulativeActual),
+        };
+      });
 
       return {
         groupId,
         groupName,
         categoryId,
         categoryName,
-        totalBudget,
-        totalExpense,
-        remainingBudget,
-        percentageUsed,
-        ...getBudgetProjection(totalBudget, totalExpense, budget.resetStrategy),
+        totalBudget: this.round(budgetAmount),
+        totalExpense: this.round(budgetExpense),
+        remainingBudget: this.round(remainingBudget),
+        percentageUsed: this.round(percentageUsed),
+        ...getBudgetProjection(
+          budgetAmount,
+          budgetExpense,
+          budget.resetStrategy,
+        ),
+        trendPoints,
       };
     });
 
     return {
-      totalBudget,
-      totalExpense,
-      totalRemainingBudget,
+      totalBudget: this.round(totalBudget),
+      totalExpense: this.round(totalExpense),
+      totalRemainingBudget: this.round(totalRemainingBudget),
       budgetProjection,
+      trendPoints: overallTrendPoints,
       budgetOverviews,
     };
   }
 
-  async getPersonalBudgetOverview(userId: string) {
+  async getPersonalBudgetOverview(
+    userId: string,
+    range: { start: Date; end: Date } | null,
+  ) {
     const budgets =
       await this.budgetService.getBudgetsForPersonalCategories(userId);
-    return this.generateBudgetOverview(budgets);
+    return this.generateBudgetOverview(budgets, range);
   }
 
-  async getGroupsBudgetOverview(userId: string) {
+  async getGroupsBudgetOverview(
+    userId: string,
+    range: { start: Date; end: Date } | null,
+  ) {
     const budgets = await this.budgetService.getBudgetsForAllTheGroups(userId);
-    return this.generateBudgetOverview(budgets);
+    return this.generateBudgetOverview(budgets, range);
   }
 
-  async getDashboardData(userId: string) {
-    const [expenseSummary, allCategories, balances] = await Promise.all([
-      this.getExpenseSummary(userId),
+  async getDashboardData(userId: string, query?: DashboardFilterDto) {
+    const range = getRangeByPeriod(
+      query?.period,
+      query?.startDate,
+      query?.endDate,
+    );
+    const dateFilters = range
+      ? {
+          startDate: range.start.toISOString(),
+          endDate: range.end.toISOString(),
+        }
+      : undefined;
+
+    const [expenseSummary, allCategories, rawBalances] = await Promise.all([
+      this.getExpenseSummary(userId, dateFilters),
       this.getAllCategories(userId),
       this.settlementService.getUserBalances(userId),
     ]);
 
-    const categorySummary = this.getAllCategoriesSummary(allCategories);
+    const balances = {
+      ...rawBalances,
+      netBalance: this.round(rawBalances.netBalance),
+      totalOwedToYou: this.round(rawBalances.totalOwedToYou),
+      totalYouOwe: this.round(rawBalances.totalYouOwe),
+    };
+
+    const filteredCategories = this.filterCategoriesByDate(
+      allCategories,
+      range,
+    );
+    const categorySummary = this.getAllCategoriesSummary(filteredCategories);
 
     const [personalBudgetOverview, groupsBudgetOverview] = await Promise.all([
-      this.getPersonalBudgetOverview(userId),
-      this.getGroupsBudgetOverview(userId),
+      this.getPersonalBudgetOverview(userId, range),
+      this.getGroupsBudgetOverview(userId, range),
     ]);
 
     const budgetOverview = {

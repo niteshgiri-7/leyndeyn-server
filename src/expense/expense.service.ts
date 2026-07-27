@@ -105,15 +105,18 @@ export class ExpenseService {
     });
   }
 
-  async getAllExpensesOfAUserAsParticipant(userId: string) {
+  async getAllExpensesOfAUserAsParticipant(
+    userId: string,
+    filters?: ExpenseFilterQueryDto,
+  ) {
     const expenses = await this.prisma.expense.findMany({
-      where: {
+      where: this.buildExpenseWhere(filters, {
         participants: {
           some: {
             userId,
           },
         },
-      },
+      }),
       include: {
         category: true,
         group: true,

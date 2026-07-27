@@ -39,9 +39,10 @@ describe("DashboardController", () => {
       username: "user1",
       isVerified: true,
     };
-    const data = await controller.getDashboard(mockPayload);
+    const data = await controller.getDashboard(mockPayload, {});
     expect(dashboardServiceMock.getDashboardData).toHaveBeenCalledWith(
       "user-1",
+      {},
     );
     expect(data).toBeDefined();
   });

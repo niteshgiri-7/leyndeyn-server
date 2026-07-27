@@ -10,6 +10,7 @@ export interface CategorySummary {
   name: string;
   amount: number;
   percentage: number;
+  groupName?: string;
 }
 
 export type BudgetStatus = "ON_TRACK" | "OVER_BUDGET" | "UNDER_BUDGET";

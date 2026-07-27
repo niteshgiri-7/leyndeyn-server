@@ -7,7 +7,12 @@ import {
   IsString,
   Min,
   IsNumber,
+  Validate,
 } from "class-validator";
+import {
+  IsBeforeOrSameConstraint,
+  IsNotInFutureConstraint,
+} from "../../common/validators/date.validator";
 
 export class ExpenseFilterQueryDto {
   @IsOptional()
@@ -32,10 +37,13 @@ export class ExpenseFilterQueryDto {
 
   @IsOptional()
   @IsDateString()
+  @Validate(IsNotInFutureConstraint)
+  @Validate(IsBeforeOrSameConstraint, ["endDate"])
   startDate?: string;
 
   @IsOptional()
   @IsDateString()
+  @Validate(IsNotInFutureConstraint)
   endDate?: string;
 
   @IsOptional()

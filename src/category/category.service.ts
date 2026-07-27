@@ -192,6 +192,7 @@ export class CategoryService {
         include: {
           budgets: true,
           expenses: true,
+          group: true,
         },
       });
     }
@@ -207,6 +208,7 @@ export class CategoryService {
       include: {
         budgets: true,
         expenses: true,
+        group: true,
       },
     });
   }
@@ -263,6 +265,7 @@ export class CategoryService {
       include: {
         budgets: true,
         expenses: true,
+        group: true,
       },
     });
 
