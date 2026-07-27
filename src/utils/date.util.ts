@@ -7,7 +7,6 @@ import {
   subWeeks,
   eachWeekOfInterval,
   eachDayOfInterval,
-  format,
 } from "date-fns";
 import { TZDate } from "@date-fns/tz";
 
@@ -82,7 +81,7 @@ export const generateTrendIntervals = (
       let weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
       if (weekEnd > end) weekEnd = end;
       intervals.push({
-        label: `Week ${index + 1}`,
+        label: `week${index + 1}`,
         start: weekStart,
         end: weekEnd,
       });
@@ -91,7 +90,7 @@ export const generateTrendIntervals = (
     const days = eachDayOfInterval({ start, end });
     days.forEach((day) => {
       intervals.push({
-        label: format(day, "EEEE"),
+        label: `day${day.getDay()}`,
         start: day,
         end: day,
       });
