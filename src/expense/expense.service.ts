@@ -187,35 +187,45 @@ export class ExpenseService {
     });
   }
 
-  async createExpense(
+  async createPersonalExpense(data: CreateExpenseDto, spentById: string) {
+    return await this.prisma.expense.create({
+      data: {
+        amount: data.amount,
+        description: data.description,
+        categoryId: data.categoryId,
+        spentById,
+        splitStrategy: SplitStrategy.NONE,
+      },
+    });
+  }
+
+  async createGroupExpense(
     data: CreateExpenseDto,
     spentById: string,
-    groupId?: string,
+    groupId: string,
   ) {
     return await this.prisma.$transaction(async (prisma) => {
       const chosenSplitStrategy = data.splitStrategy ?? SplitStrategy.NONE;
 
-      if (groupId && !data?.splitStrategy)
+      if (!data?.splitStrategy)
         throw new BadRequestException(
           "Split strategy is required for non personal expenses",
         );
 
-      if (groupId && !data?.participants?.length)
+      if (!data?.participants?.length)
         throw new BadRequestException(
           "Participants are required for non personal expenses",
         );
 
-      if (groupId) {
-        const category = await prisma.category.findUnique({
-          where: { id: data.categoryId },
-          select: { groupId: true },
-        });
+      const category = await prisma.category.findUnique({
+        where: { id: data.categoryId },
+        select: { groupId: true },
+      });
 
-        if (category?.groupId !== groupId)
-          throw new BadRequestException(
-            "Category does not belong to the specified group",
-          );
-      }
+      if (category?.groupId !== groupId)
+        throw new BadRequestException(
+          "Category does not belong to the specified group",
+        );
 
       const expense = await prisma.expense.create({
         data: {
@@ -224,12 +234,12 @@ export class ExpenseService {
           categoryId: data.categoryId,
           spentById,
           splitStrategy: chosenSplitStrategy,
-          ...(groupId && { groupId }),
+          groupId,
         },
       });
 
       const participants = this.resolveParticipantsForExpense({
-        participants: data.participants!,
+        participants: data.participants,
         splitStrategy: chosenSplitStrategy,
       });
 

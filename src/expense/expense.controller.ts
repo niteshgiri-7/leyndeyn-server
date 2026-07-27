@@ -35,7 +35,7 @@ export class ExpenseController {
     @CurrentUser() user: JwtPayload,
     @Body() data: CreateExpenseDto,
   ) {
-    return await this.expenseService.createExpense(data, user.id);
+    return await this.expenseService.createPersonalExpense(data, user.id);
   }
 
   @Get("personal")
@@ -69,7 +69,7 @@ export class ExpenseController {
     @Param("groupId", ParseUUIDPipe) groupId: string,
     @Body() data: CreateExpenseDto,
   ) {
-    return await this.expenseService.createExpense(data, user.id, groupId);
+    return await this.expenseService.createGroupExpense(data, user.id, groupId);
   }
 
   @CheckAccess("group")

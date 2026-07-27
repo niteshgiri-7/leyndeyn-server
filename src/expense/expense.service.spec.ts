@@ -437,29 +437,17 @@ describe("ExpenseService", () => {
     });
   });
 
-  describe("createExpense", () => {
-    it("should create an expense", async () => {
+  describe("createPersonalExpense", () => {
+    it("should create a personal expense", async () => {
       const dto: CreateExpenseDto = {
         amount: 100,
         description: "Coffee",
         categoryId: "category-1",
-        splitStrategy: SplitStrategy.NONE,
-        participants: [
-          {
-            participantId: "user-1",
-          },
-        ],
       };
       const created = makeMockExpense();
       prismaExpense.create.mockResolvedValue(created);
-      prismaExpenseParticipant.createManyAndReturn.mockResolvedValue([
-        {
-          expenseId: created.id,
-          userId: "user-2",
-          amount: 50,
-        },
-      ]);
-      const result = await service.createExpense(dto, "user-1");
+
+      const result = await service.createPersonalExpense(dto, "user-1");
 
       expect(prismaExpense.create).toHaveBeenCalledWith({
         data: {
@@ -470,16 +458,12 @@ describe("ExpenseService", () => {
           splitStrategy: SplitStrategy.NONE,
         },
       });
-      expect(result).toEqual([
-        {
-          expenseId: created.id,
-          userId: "user-2",
-          amount: 50,
-        },
-      ]);
+      expect(result).toEqual(created);
     });
+  });
 
-    it("should create a non-personal expense with participants", async () => {
+  describe("createGroupExpense", () => {
+    it("should create a group expense with participants", async () => {
       const dto: CreateExpenseDto = {
         amount: 100,
         description: "Dinner",
@@ -492,6 +476,10 @@ describe("ExpenseService", () => {
         ],
       };
       const created = makeMockExpense({ splitStrategy: SplitStrategy.EQUAL });
+      prismaCategory.findUnique.mockResolvedValue({
+        id: "category-1",
+        groupId: "group-1",
+      } as any);
       prismaExpense.create.mockResolvedValue(created);
       prismaExpenseParticipant.createManyAndReturn.mockResolvedValue([
         {
@@ -501,7 +489,7 @@ describe("ExpenseService", () => {
         },
       ]);
 
-      const result = await service.createExpense(dto, "user-1");
+      const result = await service.createGroupExpense(dto, "user-1", "group-1");
 
       expect(prismaExpense.create).toHaveBeenCalledWith({
         data: {
@@ -510,6 +498,7 @@ describe("ExpenseService", () => {
           categoryId: dto.categoryId,
           spentById: "user-1",
           splitStrategy: SplitStrategy.EQUAL,
+          groupId: "group-1",
         },
       });
       expect(splitStrategyFactory.getStrategy).toHaveBeenCalledWith(
@@ -547,9 +536,9 @@ describe("ExpenseService", () => {
         ],
       };
 
-      await expect(service.createExpense(dto, "user-1")).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.createGroupExpense(dto, "user-1", "group-1"),
+      ).rejects.toThrow(BadRequestException);
       expect(prismaExpense.create).not.toHaveBeenCalled();
     });
   });

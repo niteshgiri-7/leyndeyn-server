@@ -19,7 +19,14 @@ type GroupExpenseResponse = {
 };
 
 type ExpenseServiceMock = {
-  createExpense: jest.Mock<Promise<Expense>, [CreateExpenseDto, string]>;
+  createPersonalExpense: jest.Mock<
+    Promise<Expense>,
+    [CreateExpenseDto, string]
+  >;
+  createGroupExpense: jest.Mock<
+    Promise<Expense>,
+    [CreateExpenseDto, string, string]
+  >;
   getExpenseByCategoryId: jest.Mock<
     Promise<Expense[]>,
     [string, ExpenseFilterQueryDto | undefined]
@@ -71,7 +78,14 @@ describe("ExpenseController", () => {
 
   beforeEach(async () => {
     expenseService = {
-      createExpense: jest.fn<Promise<Expense>, [CreateExpenseDto, string]>(),
+      createPersonalExpense: jest.fn<
+        Promise<Expense>,
+        [CreateExpenseDto, string]
+      >(),
+      createGroupExpense: jest.fn<
+        Promise<Expense>,
+        [CreateExpenseDto, string, string]
+      >(),
       getExpenseByCategoryId: jest.fn<
         Promise<Expense[]>,
         [string, ExpenseFilterQueryDto | undefined]
@@ -115,19 +129,45 @@ describe("ExpenseController", () => {
     expect(controller).toBeDefined();
   });
 
-  it("creates an expense", async () => {
+  it("creates a personal expense", async () => {
     const dto: CreateExpenseDto = {
       amount: 100,
       description: "Coffee",
       categoryId: "category-1",
     };
     const created = makeMockExpense();
-    expenseService.createExpense.mockResolvedValue(created);
+    expenseService.createPersonalExpense.mockResolvedValue(created);
 
     const result = await controller.createPersonalExpense(mockUser, dto);
 
     expect(result).toEqual(created);
-    expect(expenseService.createExpense).toHaveBeenCalledWith(dto, mockUser.id);
+    expect(expenseService.createPersonalExpense).toHaveBeenCalledWith(
+      dto,
+      mockUser.id,
+    );
+  });
+
+  it("creates a group expense", async () => {
+    const dto: CreateExpenseDto = {
+      amount: 100,
+      description: "Coffee",
+      categoryId: "category-1",
+    };
+    const created = makeMockExpense();
+    expenseService.createGroupExpense.mockResolvedValue(created);
+
+    const result = await controller.createGroupExpense(
+      mockUser,
+      "group-1",
+      dto,
+    );
+
+    expect(result).toEqual(created);
+    expect(expenseService.createGroupExpense).toHaveBeenCalledWith(
+      dto,
+      mockUser.id,
+      "group-1",
+    );
   });
 
   it("gets expenses by category id", async () => {
