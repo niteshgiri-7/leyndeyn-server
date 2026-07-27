@@ -132,6 +132,10 @@ export class DashboardService {
       0,
     );
 
+    const actualExpensesAsPayer = expensesAsPayer.filter(
+      (expense) => expense.groupId !== null,
+    );
+
     const totalSplittedShare = expensesAsParticipant.reduce(
       (total, expense) =>
         total +
@@ -142,7 +146,7 @@ export class DashboardService {
       0,
     );
 
-    const totalExpensesAsPayer = expensesAsPayer.reduce(
+    const totalExpensesAsPayer = actualExpensesAsPayer.reduce(
       (total, expense) => total + expense.amount,
       0,
     );
