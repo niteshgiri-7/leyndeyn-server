@@ -30,3 +30,14 @@ export type Settlement = {
   to: IUser;
   amount: number;
 };
+
+export type DashboardSettlementItem = {
+  id: string;
+  name: string;
+  type: "friend" | "group";
+  amount: number;
+  settlementType: "YOU_OWE" | "OWES_YOU" | "GROUP_TRANSFER";
+  groupName: string;
+  fromUser: string;
+  toUser: string;
+};

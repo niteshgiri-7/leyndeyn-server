@@ -3,7 +3,6 @@ import { BudgetResetStrategy } from "../../generated/prisma/client/enums";
 import { BudgetService } from "../budget/budget.service";
 import { CategoryService } from "../category/category.service";
 import { ExpenseService } from "../expense/expense.service";
-import { GroupMemberService } from "../group/group-member.service";
 import { GroupService } from "../group/group.service";
 import { SettlementService } from "../settlement/settlement.service";
 import { getBudgetProjection } from "../utils/budget.strategy.util";
@@ -13,7 +12,6 @@ import { Budgets, Categories, CategorySummary } from "./dashboard.type";
 export class DashboardService {
   constructor(
     private readonly groupService: GroupService,
-    private readonly groupMemberService: GroupMemberService,
     private readonly expenseService: ExpenseService,
     private readonly settlementService: SettlementService,
     private readonly budgetService: BudgetService,
@@ -170,9 +168,10 @@ export class DashboardService {
   }
 
   async getDashboardData(userId: string) {
-    const [expenseSummary, allCategories] = await Promise.all([
+    const [expenseSummary, allCategories, balances] = await Promise.all([
       this.getExpenseSummary(userId),
       this.getAllCategories(userId),
+      this.settlementService.getUserBalances(userId),
     ]);
 
     const categorySummary = this.getAllCategoriesSummary(allCategories);
@@ -193,6 +192,7 @@ export class DashboardService {
         categorySummary,
       },
       budgetOverview,
+      balances,
     };
   }
 }

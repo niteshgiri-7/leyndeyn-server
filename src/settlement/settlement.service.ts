@@ -12,6 +12,7 @@ import {
   GroupExpenses,
   GroupSettlements,
   Settlement,
+  DashboardSettlementItem,
 } from "./type/settlement.type";
 import { SettlementStatus } from "../../generated/prisma/client/enums";
 
@@ -263,5 +264,105 @@ export class SettlementService {
       },
     });
     return settlements;
+  }
+
+  async getUserBalances(userId: string) {
+    const groups = await this.prisma.group.findMany({
+      where: { members: { some: { userId } } },
+      include: { members: true },
+    });
+    const groupIds = groups.map((g) => g.id);
+
+    const expenses = await this.prisma.expense.findMany({
+      where: { groupId: { in: groupIds } },
+      include: {
+        participants: {
+          select: {
+            user: true,
+            amount: true,
+          },
+        },
+        spentBy: {
+          omit: {
+            passwordHash: true,
+          },
+        },
+      },
+    });
+
+    const settledExpenses = await this.prisma.expenseSettlement.findMany({
+      where: { groupId: { in: groupIds } },
+      include: {
+        fromUser: true,
+        toUser: true,
+      },
+    });
+
+    const expensesByGroup = new Map<string, typeof expenses>();
+    const settledByGroup = new Map<string, typeof settledExpenses>();
+
+    for (const e of expenses) {
+      if (!e.groupId) continue;
+      if (!expensesByGroup.has(e.groupId)) expensesByGroup.set(e.groupId, []);
+      expensesByGroup.get(e.groupId)!.push(e);
+    }
+    for (const s of settledExpenses) {
+      if (!s.groupId) continue;
+      if (!settledByGroup.has(s.groupId)) settledByGroup.set(s.groupId, []);
+      settledByGroup.get(s.groupId)!.push(s);
+    }
+
+    let totalYouOwe = 0;
+    let totalOwedToYou = 0;
+    const items: DashboardSettlementItem[] = [];
+
+    for (const group of groups) {
+      const groupExpenses = expensesByGroup.get(group.id) || [];
+      const groupSettled = settledByGroup.get(group.id) || [];
+
+      const balances = this.calculateBalances(groupExpenses, groupSettled);
+      const { creditors, debtors } =
+        this.splitBalancesToDebtorAndCreditor(balances);
+      const settlements = this.simplifyDebts(debtors, creditors);
+
+      const isFriendGroup = group.members.length === 2 && group.name === "";
+
+      for (const s of settlements) {
+        if (s.from.userId !== userId && s.to.userId !== userId) continue;
+
+        if (s.from.userId === userId) {
+          totalYouOwe += s.amount;
+          items.push({
+            id: `settle-${group.id}-${s.to.userId}`,
+            name: isFriendGroup ? s.to.username : group.name,
+            type: isFriendGroup ? "friend" : "group",
+            amount: s.amount,
+            settlementType: isFriendGroup ? "YOU_OWE" : "GROUP_TRANSFER",
+            groupName: isFriendGroup ? "Friend" : group.name,
+            fromUser: s.from.username,
+            toUser: s.to.username,
+          });
+        } else if (s.to.userId === userId) {
+          totalOwedToYou += s.amount;
+          items.push({
+            id: `settle-${s.from.userId}-${group.id}`,
+            name: isFriendGroup ? s.from.username : group.name,
+            type: isFriendGroup ? "friend" : "group",
+            amount: s.amount,
+            settlementType: isFriendGroup ? "OWES_YOU" : "GROUP_TRANSFER",
+            groupName: isFriendGroup ? "Friend" : group.name,
+            fromUser: s.from.username,
+            toUser: s.to.username,
+          });
+        }
+      }
+    }
+
+    return {
+      totalYouOwe,
+      totalOwedToYou,
+      netBalance: totalOwedToYou - totalYouOwe,
+      items,
+    };
   }
 }
