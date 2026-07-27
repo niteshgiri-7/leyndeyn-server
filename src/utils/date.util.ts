@@ -9,31 +9,37 @@ import {
   eachDayOfInterval,
   format,
 } from "date-fns";
+import { TZDate } from "@date-fns/tz";
 
-export const getThisWeekRange = (now = new Date()) => {
+const getNow = (timeZone?: string) =>
+  timeZone ? new TZDate(Date.now(), timeZone) : new Date();
+
+export const getThisWeekRange = (timeZone?: string) => {
+  const now = getNow(timeZone);
   return {
     start: startOfWeek(now, { weekStartsOn: 1 }),
     end: endOfWeek(now, { weekStartsOn: 1 }),
   };
 };
 
-export const getThisMonthRange = (now = new Date()) => {
+export const getThisMonthRange = (timeZone?: string) => {
+  const now = getNow(timeZone);
   return {
     start: startOfMonth(now),
     end: endOfMonth(now),
   };
 };
 
-export const getPreviousWeekRange = (now = new Date()) => {
-  const previousWeek = subWeeks(now, 1);
+export const getPreviousWeekRange = (timeZone?: string) => {
+  const previousWeek = subWeeks(getNow(timeZone), 1);
   return {
     start: startOfWeek(previousWeek, { weekStartsOn: 1 }),
     end: endOfWeek(previousWeek, { weekStartsOn: 1 }),
   };
 };
 
-export const getPreviousMonthRange = (now = new Date()) => {
-  const previousMonth = subMonths(now, 1);
+export const getPreviousMonthRange = (timeZone?: string) => {
+  const previousMonth = subMonths(getNow(timeZone), 1);
   return {
     start: startOfMonth(previousMonth),
     end: endOfMonth(previousMonth),
@@ -44,19 +50,20 @@ export const getRangeByPeriod = (
   period: string | undefined,
   startDate?: string,
   endDate?: string,
+  timeZone?: string,
 ) => {
   if (startDate && endDate) {
     return { start: new Date(startDate), end: new Date(endDate) };
   }
   switch (period) {
     case "THIS_WEEK":
-      return getThisWeekRange();
+      return getThisWeekRange(timeZone);
     case "PREVIOUS_WEEK":
-      return getPreviousWeekRange();
+      return getPreviousWeekRange(timeZone);
     case "THIS_MONTH":
-      return getThisMonthRange();
+      return getThisMonthRange(timeZone);
     case "PREVIOUS_MONTH":
-      return getPreviousMonthRange();
+      return getPreviousMonthRange(timeZone);
     default:
       return null;
   }
@@ -70,7 +77,6 @@ export const generateTrendIntervals = (
   const intervals: { label: string; start: Date; end: Date }[] = [];
 
   if (resetStrategy === "MONTHLY") {
-    // Generate weekly intervals for a month
     const weeks = eachWeekOfInterval({ start, end }, { weekStartsOn: 1 });
     weeks.forEach((weekStart, index) => {
       let weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
@@ -82,17 +88,15 @@ export const generateTrendIntervals = (
       });
     });
   } else if (resetStrategy === "WEEKLY") {
-    // Generate daily intervals for a week
     const days = eachDayOfInterval({ start, end });
     days.forEach((day) => {
       intervals.push({
-        label: format(day, "EEEE"), // Monday, Tuesday, etc.
+        label: format(day, "EEEE"),
         start: day,
         end: day,
       });
     });
   } else {
-    // Daily strategy - perhaps just one interval
     intervals.push({
       label: "Today",
       start,

@@ -296,6 +296,7 @@ export class DashboardService {
       query?.period,
       query?.startDate,
       query?.endDate,
+      query?.timeZone,
     );
     const dateFilters = range
       ? {

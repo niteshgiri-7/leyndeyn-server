@@ -1,4 +1,10 @@
-import { IsDateString, IsEnum, IsOptional, Validate } from "class-validator";
+import {
+  IsDateString,
+  IsEnum,
+  IsOptional,
+  IsString,
+  Validate,
+} from "class-validator";
 import {
   IsBeforeOrSameConstraint,
   IsNotInFutureConstraint,
@@ -26,4 +32,8 @@ export class DashboardFilterDto {
   @IsDateString()
   @Validate(IsNotInFutureConstraint)
   endDate?: string;
+
+  @IsOptional()
+  @IsString()
+  timeZone?: string;
 }

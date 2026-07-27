@@ -47,6 +47,10 @@ export class ExpenseFilterQueryDto {
   endDate?: string;
 
   @IsOptional()
+  @IsString()
+  timeZone?: string;
+
+  @IsOptional()
   @Transform(({ value }): string[] | undefined => {
     if (value == null) return value;
 
