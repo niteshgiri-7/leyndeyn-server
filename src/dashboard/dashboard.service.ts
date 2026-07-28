@@ -188,6 +188,7 @@ export class DashboardService {
       totalBudget,
       totalExpense,
       strategy,
+      range,
     );
 
     const overallTrendIntervals = range
@@ -280,6 +281,7 @@ export class DashboardService {
           budgetAmount,
           budgetExpense,
           budget.resetStrategy,
+          range,
         ),
         trendPoints,
       };
