@@ -58,10 +58,19 @@ export class ManageBudgetGuard implements CanActivate {
         "Category not found or user is not a member of the associated group",
       );
 
-    if (categoryWithAssociatedGroup?.group?.allowMembersToManageCategory)
+    if (!categoryWithAssociatedGroup.group) {
+      if (categoryWithAssociatedGroup.userId === userId) {
+        return true;
+      }
+      throw new ForbiddenException(
+        "You do not have access to manage this budget",
+      );
+    }
+
+    if (categoryWithAssociatedGroup.group.allowMembersToManageCategory)
       return true;
 
-    if (categoryWithAssociatedGroup?.group?.members[0]?.role !== "ADMIN")
+    if (categoryWithAssociatedGroup.group.members[0]?.role !== "ADMIN")
       throw new ForbiddenException("Admin access required to manage budgets");
 
     return true;

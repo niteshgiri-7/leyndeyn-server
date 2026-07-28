@@ -108,7 +108,11 @@ describe("CategoryService", () => {
         },
       });
       expect(prismaMock.category.create).toHaveBeenCalledWith({
-        data: createInput,
+        data: {
+          name: createInput.name,
+          description: createInput.description,
+          userId: createInput.ownerId,
+        },
       });
       expect(result).toEqual(expected);
     });
