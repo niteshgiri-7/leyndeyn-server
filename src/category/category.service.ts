@@ -52,7 +52,11 @@ export class CategoryService {
       throw new ConflictException("Category with the same name already exists");
 
     return await this.prismaService.category.create({
-      data,
+      data: {
+        name: data.name,
+        description: data.description,
+        userId: data.ownerId,
+      },
     });
   }
 
