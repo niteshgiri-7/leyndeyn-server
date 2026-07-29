@@ -102,3 +102,29 @@ npm run test:cov
 - this also applies for the expenses where I am participant
 - show budget vs actual expense graph
 - show a graph based on budget and current expense so that user know if he is spending on balance and don't run out of budget at the end of month applies to both user and group.
+
+- backend todo
+- allow adding profile picture
+- send email verification code
+
+notification todo
+
+- send notification on expense addition. (ask the participant to confirm the expense or raise dispute)
+- send notification when friend request arrives.
+- send notification when new user joins a group.
+- App todo
+- for client side, make the filters work. ........DONE
+- show create category and track budget instead of currently showing directly create budget.......DONE
+- create,update and delete personal category ............DONE.
+- create, update and edit friend and group category ...........DONE
+- add budget from the category card. ..............DONE
+- create a notification page
+- show no settlements pending in the settlements and balances card if net is 0 ....DONE
+- check the graphpacecard.
+- Oauth2
+
+- read the notification and show the app pop up to add the expense form, if possible populate the form with the relevant data.
+
+- add a profile picture
+
+- last priority, make the app functional in offline

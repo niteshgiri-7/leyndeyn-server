@@ -1,6 +1,7 @@
 import { Body, Controller, Post } from "@nestjs/common";
-import { CreateUserDto, CustomLoginDto } from "../user/dto/user.dto";
 import { AuthService } from "./auth.service";
+import { GoogleLoginDto } from "./dto/google-login.dto";
+import { CreateUserDto, CustomLoginDto } from "../user/dto/user.dto";
 
 @Controller("auth")
 export class AuthController {
@@ -18,6 +19,11 @@ export class AuthController {
       createUserDto.password,
       createUserDto.username,
     );
+  }
+
+  @Post("google")
+  async loginWithGoogle(@Body() dto: GoogleLoginDto) {
+    return await this.authService.loginWithGoogle(dto);
   }
 
   @Post("refresh-token")

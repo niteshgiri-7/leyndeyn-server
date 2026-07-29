@@ -8,12 +8,15 @@ import { JwtService, JwtSignOptions } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
 import { UserRepository } from "../repository/user.repository";
 import { JwtPayload } from "./jwt-payload.type";
+import { GoogleLoginDto } from "./dto/google-login.dto";
+import { GoogleAuthService } from "./gogole-auth.service";
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly userRepository: UserRepository,
+    private readonly googleAuthService: GoogleAuthService,
   ) {}
 
   async login(email: string, password: string) {
@@ -139,5 +142,71 @@ export class AuthService {
     options?: JwtSignOptions,
   ) {
     return await this.jwtService.signAsync(payload, options);
+  }
+
+  async loginWithGoogle(data: GoogleLoginDto) {
+    const { idToken } = data;
+    const { email, sub, name, picture } =
+      await this.googleAuthService.verifyIdToken(idToken);
+
+    if (!email || !sub || !name)
+      throw new UnauthorizedException("Invalid Google ID token");
+
+    const existingUser = await this.userRepository.findByEmail(email);
+
+    let payload: JwtPayload;
+
+    if (existingUser) {
+      payload = {
+        email: existingUser.email,
+        id: existingUser.id,
+        isVerified: existingUser.isVerified,
+        username: existingUser.username,
+      };
+
+      const accessToken = await this.generateJwtToken(payload, {
+        expiresIn: "7d",
+      });
+      const refreshToken = await this.generateJwtToken(payload, {
+        expiresIn: "30d",
+      });
+
+      return {
+        accessToken,
+        refreshToken,
+        message: `Welcome back ${existingUser.username}!`,
+      };
+    } else {
+      const newUser = await this.userRepository.create({
+        email,
+        username: name,
+        isVerified: true,
+        avatarUrl: picture ?? null,
+        accounts: {
+          create: {
+            provider: "google",
+            providerAccountId: sub,
+          },
+        },
+      });
+
+      payload = {
+        email,
+        id: newUser.id,
+        isVerified: true,
+        username: name,
+      };
+      const accessToken = await this.generateJwtToken(payload, {
+        expiresIn: "7d",
+      });
+      const refreshToken = await this.generateJwtToken(payload, {
+        expiresIn: "30d",
+      });
+      return {
+        accessToken,
+        refreshToken,
+        message: `Welcome aboard ${newUser.username}!`,
+      };
+    }
   }
 }
