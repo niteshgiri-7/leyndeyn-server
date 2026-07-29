@@ -10,6 +10,7 @@ import { UserRepository } from "../repository/user.repository";
 import { JwtPayload } from "./jwt-payload.type";
 import { GoogleLoginDto } from "./dto/google-login.dto";
 import { GoogleAuthService } from "./gogole-auth.service";
+import { UserWhereUniqueInput } from "../../generated/prisma/client/models";
 
 @Injectable()
 export class AuthService {
@@ -157,6 +158,18 @@ export class AuthService {
     let payload: JwtPayload;
 
     if (existingUser) {
+      await this.userRepository.update(
+        existingUser.id as unknown as UserWhereUniqueInput,
+        {
+          accounts: {
+            create: {
+              provider: "google",
+              providerAccountId: sub,
+            },
+          },
+        },
+      );
+
       payload = {
         email: existingUser.email,
         id: existingUser.id,
