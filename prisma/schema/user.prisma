@@ -15,4 +15,5 @@ model User {
   memberships GroupMember[]
   settlementSent ExpenseSettlement[] @relation("SettlementPayer")
   settlementReceived ExpenseSettlement[] @relation("SettlementReceiver")
+  deviceTokens DeviceToken[]
 }
