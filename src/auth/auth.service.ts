@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -24,8 +25,12 @@ export class AuthService {
   async login(email: string, password: string) {
     const user = await this.userRepository.findByEmail(email);
 
-    if (!user || !user.passwordHash || !user.email)
-      throw new NotFoundException("user not found");
+    if (!user) throw new NotFoundException("user not found");
+
+    if (!user.passwordHash)
+      throw new BadRequestException(
+        "This email is registered with Google. Please use Google login.",
+      );
 
     const isCredentialsValid = await this.comparePassword(
       password,
