@@ -43,9 +43,9 @@ export class UserRepository implements IRepository<
     });
   }
 
-  async update(id: UserWhereUniqueInput, data: UserUpdateInput) {
+  async update(where: UserWhereUniqueInput, data: UserUpdateInput) {
     return await this.prisma.user.update({
-      where: id,
+      where,
       data,
     });
   }

@@ -16,11 +16,10 @@ export class GoogleAuthService {
         idToken,
         audience: process.env.GOOGLE_WEB_CLIENT_ID,
       });
-    } catch {
-      throw new UnauthorizedException("Invalid Google ID token");
+    } catch (error) {
+      throw new UnauthorizedException("Invalid Google ID token" + error);
     }
     const payload = ticket.getPayload();
-
     if (
       !payload ||
       !payload.email ||

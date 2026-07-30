@@ -7,10 +7,10 @@ import {
 import { JwtService, JwtSignOptions } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
 import { UserRepository } from "../repository/user.repository";
-import { JwtPayload } from "./jwt-payload.type";
 import { GoogleLoginDto } from "./dto/google-login.dto";
-import { GoogleAuthService } from "./gogole-auth.service";
-import { UserWhereUniqueInput } from "../../generated/prisma/client/models";
+import { GoogleAuthService } from "./google-auth.service";
+import { JwtPayload } from "./jwt-payload.type";
+import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
 export class AuthService {
@@ -18,6 +18,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly userRepository: UserRepository,
     private readonly googleAuthService: GoogleAuthService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async login(email: string, password: string) {
@@ -158,17 +159,31 @@ export class AuthService {
     let payload: JwtPayload;
 
     if (existingUser) {
-      await this.userRepository.update(
-        existingUser.id as unknown as UserWhereUniqueInput,
-        {
-          accounts: {
-            create: {
-              provider: "google",
-              providerAccountId: sub,
-            },
-          },
+      const account = await this.prisma.account.findFirst({
+        where: {
+          userId: existingUser.id,
         },
-      );
+      });
+
+      if (account) {
+        await this.prisma.account.update({
+          where: {
+            id: account.id,
+          },
+          data: {
+            provider: "google",
+            providerAccountId: sub,
+          },
+        });
+      } else {
+        await this.prisma.account.create({
+          data: {
+            provider: "google",
+            providerAccountId: sub,
+            userId: existingUser.id,
+          },
+        });
+      }
 
       payload = {
         email: existingUser.email,
