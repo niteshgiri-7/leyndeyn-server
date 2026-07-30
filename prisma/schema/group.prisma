@@ -15,4 +15,6 @@ model Group{
     expenses Expense[]
     
     settleMents ExpenseSettlement[]
+
+    notificationEvents NotificationEvent[]
 }

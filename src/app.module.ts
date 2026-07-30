@@ -12,6 +12,9 @@ import { BudgetModule } from "./budget/budget.module";
 import { ExpenseModule } from "./expense/expense.module";
 import { SettlementModule } from "./settlement/settlement.module";
 import { DashboardModule } from "./dashboard/dashboard.module";
+import { NotificationModule } from "./notification/notification.module";
+import { DevicesModule } from "./devices/devices.module";
+import { EventEmitterModule } from "@nestjs/event-emitter";
 
 @Module({
   imports: [
@@ -25,6 +28,7 @@ import { DashboardModule } from "./dashboard/dashboard.module";
         secret: configService.get<string>("JWT_SECRET"),
       }),
     }),
+    EventEmitterModule.forRoot(),
     PrismaModule,
     UserModule,
     AuthModule,
@@ -34,6 +38,8 @@ import { DashboardModule } from "./dashboard/dashboard.module";
     ExpenseModule,
     SettlementModule,
     DashboardModule,
+    NotificationModule,
+    DevicesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

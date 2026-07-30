@@ -6,12 +6,16 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { UserRepository } from "../repository/user.repository";
 import { GroupRole } from "../../generated/prisma/client/enums";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { AppEvents } from "../common/events/all-app.events";
+import { UserAddedToGroupEvent } from "../common/events/user-added-to-group.event";
 
 @Injectable()
 export class GroupMemberService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly userRepository: UserRepository,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async addMemberToGroup(
@@ -32,6 +36,8 @@ export class GroupMemberService {
         this.userRepository.validateUserExists("", email),
       ),
     );
+
+    const currentUser = await this.userRepository.findById(currentUserId);
 
     const groupWithMembers = await this.prisma.group.findUnique({
       where: { id: groupId },
@@ -94,10 +100,48 @@ export class GroupMemberService {
           userId: user.id,
           role: role ?? "MEMBER",
         },
+        include: {
+          group: {
+            include: {
+              _count: {
+                select: {
+                  members: true,
+                },
+              },
+            },
+          },
+        },
       });
+
       results.push(created);
     }
 
+    const addedUserIds = users.map((user) => user.id);
+
+    const finalMemberCount = currentMemberCount + addedUserIds.length;
+
+    if (finalMemberCount === 2)
+      this.eventEmitter.emit(
+        AppEvents.FRIEND_ADDED,
+        new UserAddedToGroupEvent(
+          addedUserIds,
+          groupId,
+          "Friend",
+          currentUserId,
+          currentUser?.username ?? "",
+        ),
+      );
+    else
+      this.eventEmitter.emit(
+        AppEvents.GROUP_MEMBER_ADDED,
+        new UserAddedToGroupEvent(
+          addedUserIds,
+          groupId,
+          groupWithMembers?.name ?? "Group",
+          currentUserId,
+          currentUser?.username ?? "",
+        ),
+      );
     return Array.isArray(emailOrEmails) ? results : results[0];
   }
 

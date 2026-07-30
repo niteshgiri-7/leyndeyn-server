@@ -1,19 +1,23 @@
 model User {
-  id               String    @id @default(cuid())
-  email            String    @unique
-  username         String    @unique
-  avatarUrl        String?
-  passwordHash     String?
-  isVerified       Boolean   @default(false)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  accounts         Account[]
+  id           String    @id @default(cuid())
+  email        String    @unique
+  username     String    @unique
+  avatarUrl    String?
+  passwordHash String?
+  isVerified   Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  accounts     Account[]
 
-  expenses Expense[] //a user can have multiple expenses
+  expenses            Expense[] //a user can have multiple expenses
   expenseParticipants ExpenseParticipant[]
-  category Category[]
-  memberships GroupMember[]
-  settlementSent ExpenseSettlement[] @relation("SettlementPayer")
-  settlementReceived ExpenseSettlement[] @relation("SettlementReceiver")
-  deviceTokens DeviceToken[]
+  category            Category[]
+  memberships         GroupMember[]
+  settlementSent      ExpenseSettlement[]  @relation("SettlementPayer")
+  settlementReceived  ExpenseSettlement[]  @relation("SettlementReceiver")
+  deviceTokens        DeviceToken[]
+
+  createdNotificationEvents NotificationEvent[] @relation("NotificationActor")
+
+  notifications Notification[]
 }

@@ -14,12 +14,16 @@ import { SplitStrategyFactory } from "./split/split-strategy.factory";
 import { IParticipant } from "./split/split.types";
 import { UpdateExpenseDto } from "./dto/update-expense.dto";
 import { ExpenseFilterQueryDto } from "./dto/expense-filter-query.dto";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { AppEvents } from "../common/events/all-app.events";
+import { ExpenseCreatedEvent } from "../common/events/expense-created.event";
 
 @Injectable()
 export class ExpenseService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly splitStrategyFactory: SplitStrategyFactory,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async getExpenseById(expenseId: string) {
@@ -218,8 +222,19 @@ export class ExpenseService {
     spentById: string,
     groupId: string,
   ) {
-    return await this.prisma.$transaction(async (prisma) => {
+    const created = await this.prisma.$transaction(async (prisma) => {
       const chosenSplitStrategy = data.splitStrategy ?? SplitStrategy.NONE;
+
+      const payer = await prisma.user.findUnique({
+        where: {
+          id: spentById,
+        },
+        select: {
+          username: true,
+        },
+      });
+
+      if (!payer) throw new NotFoundException("Payer not found");
 
       if (!data?.splitStrategy)
         throw new BadRequestException(
@@ -265,14 +280,46 @@ export class ExpenseService {
         participants,
       });
 
-      return await prisma.expenseParticipant.createManyAndReturn({
-        data: calculatedSplits.map((s) => ({
-          expenseId: expense.id,
-          userId: s.userId,
-          amount: s.amount,
-        })),
+      const expenseParticipants =
+        await prisma.expenseParticipant.createManyAndReturn({
+          data: calculatedSplits.map((s) => ({
+            expenseId: expense.id,
+            userId: s.userId,
+            amount: s.amount,
+          })),
+        });
+
+      const group = await prisma.group.findUnique({
+        where: {
+          id: groupId,
+        },
+        select: {
+          name: true,
+        },
       });
+
+      return {
+        expense, // this contains the total spent amount by the payer
+        expenseParticipants, // this contains the actual amount owed by each participant
+        groupName: group?.name,
+        payerName: payer?.username,
+      };
     });
+
+    this.eventEmitter.emit(
+      AppEvents.EXPENSE_CREATED,
+      new ExpenseCreatedEvent(
+        created.expense.id,
+        groupId,
+        spentById,
+        created.payerName,
+        created.expense.amount,
+        created.expenseParticipants.map((p) => p.userId),
+        created.groupName,
+      ),
+    );
+
+    return created;
   }
 
   async deleteExpenseById(expenseId: string) {

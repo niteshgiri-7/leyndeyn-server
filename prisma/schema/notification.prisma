@@ -1,0 +1,29 @@
+enum NotificationType {
+    EXPENSE_ADDED
+    EXPENSE_UPDATED
+    EXPENSE_DELETED
+    ADDED_TO_GROUP
+    FRIEND_ADDED
+    SETTLEMENT_RECORDED
+}
+
+enum NotificationEventStatus {
+   DELIVERED
+   PENDING
+   FAILED
+}
+
+model Notification {
+  id String @id @default(uuid())
+
+  eventId String
+  event NotificationEvent @relation(fields: [eventId], references: [id])
+
+  userId String
+  user User @relation(fields: [userId], references: [id])
+
+  status NotificationEventStatus @default(PENDING)
+
+  readAt DateTime?
+  createdAt DateTime @default(now())
+}
