@@ -82,10 +82,10 @@ export class NotificationService {
       },
       imageUrl: null,
     });
-
+    console.log("notification result:", result);
     if (result.failureCount > 0) {
       this.logger.warn(
-        `Successfullly sent ${result.successCount}, ${result.failureCount} failed for event ${eventId}`,
+        `Successfullly sent ${result.successCount}, ${result.failureCount} failed for event ${eventId} with errors: ${result.errors.join(", ")}`,
       );
     }
 

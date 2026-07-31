@@ -24,6 +24,7 @@ export interface PushSendResult {
   failureCount: number;
   invalidTokens: string[];
   results: TokenResult[];
+  errors: (string | undefined)[];
 }
 
 export interface NotificationSender {

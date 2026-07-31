@@ -1,6 +1,6 @@
 enum PlatForm {
-    ANDROID
-    IOS
+    android
+    ios
 }
 
 model DeviceToken {

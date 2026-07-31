@@ -1,10 +1,10 @@
 // notifications/providers/firebase-admin.provider.ts
-import * as admin from "firebase-admin";
+import { App, cert, initializeApp } from "firebase-admin/app";
 import { FactoryProvider, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { FIREBASE_ADMIN } from "../notification.constants";
 
-export const firebaseAdminProvider: FactoryProvider<admin.App> = {
+export const firebaseAdminProvider: FactoryProvider<App> = {
   provide: FIREBASE_ADMIN,
   inject: [ConfigService],
   useFactory: (config: ConfigService) => {
@@ -22,8 +22,8 @@ export const firebaseAdminProvider: FactoryProvider<admin.App> = {
       );
     }
 
-    return admin.initializeApp({
-      credential: admin.cert({ projectId, clientEmail, privateKey }),
+    return initializeApp({
+      credential: cert({ projectId, clientEmail, privateKey }),
     });
   },
 };

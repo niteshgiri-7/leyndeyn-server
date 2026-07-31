@@ -1,4 +1,4 @@
-import { App } from "firebase-admin";
+import type { App } from "firebase-admin";
 import {
   NotificationSender,
   PushPayload,
@@ -6,14 +6,17 @@ import {
   TokenResult,
 } from "../interfaces/notification-sender.interface";
 import { FidMulticastMessage, getMessaging } from "firebase-admin/messaging";
+import { Inject, Injectable } from "@nestjs/common";
+import { FIREBASE_ADMIN } from "../notification.constants";
 
 const UNREGISTERED_ERROR_CODES = new Set([
   "messaging/registration-token-not-registered",
   "messaging/invalid-registration-token",
 ]);
 
+@Injectable()
 export class FcmNotificationSender implements NotificationSender {
-  constructor(private firebaseApp: App) {}
+  constructor(@Inject(FIREBASE_ADMIN) private firebaseApp: App) {}
 
   async send(payload: PushPayload): Promise<PushSendResult> {
     if (payload.tokens.length === 0)
@@ -22,6 +25,7 @@ export class FcmNotificationSender implements NotificationSender {
         failureCount: 0,
         invalidTokens: [],
         results: [],
+        errors: [],
       };
     const message: FidMulticastMessage = {
       fids: payload.tokens,
@@ -55,6 +59,7 @@ export class FcmNotificationSender implements NotificationSender {
       failureCount: response.failureCount,
       invalidTokens,
       results,
+      errors: response.responses.map((res) => res.error?.message),
     };
   }
 

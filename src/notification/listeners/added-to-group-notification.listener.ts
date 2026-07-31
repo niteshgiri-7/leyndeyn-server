@@ -14,6 +14,7 @@ export class AddedToGroupNotificationListener extends BaseEventListener {
 
   @OnEvent(AppEvents.GROUP_MEMBER_ADDED)
   async handleUserAddedToGroup(event: UserAddedToGroupEvent) {
+    console.log("UserAddedToGroupEvent received:", event);
     await this.safeHandle(() =>
       this.notification.notifyUser(
         {
