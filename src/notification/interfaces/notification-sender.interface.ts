@@ -29,4 +29,5 @@ export interface PushSendResult {
 
 export interface NotificationSender {
   send(payload: PushPayload): Promise<PushSendResult>;
+  debugSend(): Promise<void>;
 }

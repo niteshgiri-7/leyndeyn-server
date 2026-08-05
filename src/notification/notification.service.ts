@@ -51,6 +51,11 @@ export class NotificationService {
     await this.dispatchPush(event.id, data.receiptIds, data.type, title, body);
   }
 
+  async debugSend() {
+    const response = await this.sender.debugSend();
+    return response;
+  }
+
   private async dispatchPush(
     eventId: string,
     userIds: string[],

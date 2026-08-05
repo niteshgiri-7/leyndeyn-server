@@ -1,12 +1,16 @@
+import { Inject, Injectable } from "@nestjs/common";
 import type { App } from "firebase-admin";
+import {
+  FidMulticastMessage,
+  getMessaging,
+  Message,
+} from "firebase-admin/messaging";
 import {
   NotificationSender,
   PushPayload,
   PushSendResult,
   TokenResult,
 } from "../interfaces/notification-sender.interface";
-import { FidMulticastMessage, getMessaging } from "firebase-admin/messaging";
-import { Inject, Injectable } from "@nestjs/common";
 import { FIREBASE_ADMIN } from "../notification.constants";
 
 const UNREGISTERED_ERROR_CODES = new Set([
@@ -65,5 +69,17 @@ export class FcmNotificationSender implements NotificationSender {
 
   private isUnregistered(code?: string): boolean {
     return !!code && UNREGISTERED_ERROR_CODES.has(code);
+  }
+
+  async debugSend(): Promise<void> {
+    const message: Message = {
+      token: "",
+      notification: {
+        title: "Debug Notification",
+        body: "This is a debug notification sent from the server.",
+      },
+    };
+
+    await getMessaging(this.firebaseApp).send(message);
   }
 }
